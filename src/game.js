@@ -71,10 +71,10 @@ const ULTIMATES = {
 
 /* ═══════════════════ DADOS: ITENS ═══════════════════ */
 const ITEMS = {
-  pocao_menor:  { id:'pocao_menor',  icon:'🧪', name:'Poção Menor',       desc:'Restaura 60 de vida.' },
-  pocao_maior:  { id:'pocao_maior',  icon:'⚗️', name:'Poção Maior',       desc:'Restaura 150 de vida.' },
-  elixir_azul:  { id:'elixir_azul',  icon:'💠', name:'Elixir Azul',       desc:'Carrega 50% do medidor de Ultimate.' },
-  tonico:       { id:'tonico',       icon:'🌿', name:'Tônico Purificante', desc:'Remove veneno e lentidão e cura 40 de vida.' },
+  pocao_menor:  { id:'pocao_menor',  icon:'🧪', img:'assets/items/pocao-menor.png', name:'Poção Menor',       desc:'Restaura 60 de vida.' },
+  pocao_maior:  { id:'pocao_maior',  icon:'⚗️', img:'assets/items/pocao-maior.png', name:'Poção Maior',       desc:'Restaura 150 de vida.' },
+  elixir_azul:  { id:'elixir_azul',  icon:'💠', img:'assets/items/elixir-azul.png', name:'Elixir Azul',       desc:'Carrega 50% do medidor de Ultimate.' },
+  tonico:       { id:'tonico',       icon:'🌿', img:'assets/items/tonico.png',      name:'Tônico Purificante', desc:'Remove veneno e lentidão e cura 40 de vida.' },
 };
 
 /* ═══════════════════ DADOS: INIMIGOS ═══════════════════ */
@@ -434,11 +434,17 @@ function renderBag() {
     if (!it) return;
     const row = document.createElement('div');
     row.className = 'bag-item';
-    row.innerHTML = `<div class="bi-icon">${it.icon}</div>
+    row.innerHTML = `<div class="bi-icon">${itemIco(it, 44)}</div>
       <div><strong>${esc(it.name)}</strong><small>${esc(it.desc)}</small></div>
       <div class="bi-count">×${n}</div>`;
     list.appendChild(row);
   });
+}
+
+function itemIco(it, size) {
+  return it.img
+    ? `<img class="item-ico" src="${it.img}" alt="" style="width:${size}px;height:${size}px">`
+    : `<span style="font-size:${Math.round(size*0.7)}px">${it.icon}</span>`;
 }
 
 /* ═══════════════════ MOTOR DE BATALHA ═══════════════════ */
@@ -480,6 +486,7 @@ function startBattle(stage) {
     enemies: stage.waves[0].map((k,i) => buildEnemy(k,i)),
     queue: [], active: null, round: 1, over: false,
     xpEarned: 0, turnCounter: 0, logs: [], popups: [], busy: false,
+    heroPose: null, heroPoseUntil: 0,
   };
 
   $('#battle-stage-id').textContent = 'Fase ' + stage.id + (stage.waves.length > 1 ? ` · Onda 1/${stage.waves.length}` : '');
@@ -665,10 +672,11 @@ function renderMenu(mode, ctx) {
   const menu = $('#cmd-menu');
   const prompt = $('#cmd-prompt');
   menu.innerHTML = '';
-  const add = (label, sub, cls, fn, disabled) => {
+  const add = (label, sub, cls, fn, disabled, item) => {
     const btn = document.createElement('button');
     btn.className = 'cmd-btn ' + (cls||'');
-    btn.innerHTML = esc(label) + (sub ? `<small>${esc(sub)}</small>` : '');
+    const ico = item ? itemIco(item, 30) : '';
+    btn.innerHTML = ico + `<span>${esc(label)}${sub ? `<small>${esc(sub)}</small>` : ''}</span>`;
     btn.disabled = !!disabled;
     if (fn) btn.addEventListener('click', fn);
     menu.appendChild(btn);
@@ -714,7 +722,7 @@ function renderMenu(mode, ctx) {
     if (!entries.length) add('Alforje vazio', 'Vença batalhas para coletar itens', null, null, true);
     entries.forEach(([id,n]) => {
       const it = ITEMS[id];
-      add(`${it.icon} ${it.name} ×${n}`, it.desc, null, () => doItem(id));
+      add(`${it.name} ×${n}`, it.desc, 'has-ico', () => doItem(id), false, it);
     });
     add('‹ Voltar', null, 'back', () => renderMenu('root'));
     return;
@@ -746,6 +754,7 @@ function doAttack(target) {
   const b = G.battle;
   if (b.busy) return; b.busy = true;
   const h = b.hero;
+  setHeroPose('attack', 850);
   const d = applyDamage(h, target, h.atk + 6);
   log(`<strong class="hero">João</strong> golpeia <strong>${esc(target.name)}</strong> com a Rosa Azul: <strong>${d}</strong> de dano.`);
   gainMeter(h, 20);
@@ -757,6 +766,7 @@ function doSkill(sk, target) {
   if (b.busy) return; b.busy = true;
   const h = b.hero;
   h.cds[sk.id] = sk.cd + 1; // +1 porque decrementa já no início do próximo turno dele
+  setHeroPose(sk.id, 900);
 
   if (sk.id === 'chains') {
     const d = applyDamage(h, target, h.atk + 12);
@@ -956,7 +966,7 @@ function finishBattle(victory) {
   if (firstClear && b.stage.drops) {
     Object.entries(b.stage.drops).forEach(([id,n]) => {
       s.inventory[id] = (s.inventory[id]||0) + n;
-      rows.push([ITEMS[id].icon + ' ' + ITEMS[id].name, '×' + n]);
+      rows.push([itemIco(ITEMS[id], 22) + ' ' + ITEMS[id].name, '×' + n]);
     });
   }
 
@@ -1004,6 +1014,11 @@ function playUltCutscene(ult) {
     const ov = $('#ult-overlay');
     $('#ult-name').textContent = ult.shout;
     $('#ult-caller').textContent = HERO.name + ' invoca';
+    const poseSrc = ult.id === 'bloom' ? 'assets/heroes/joao-ult-bloom.png' : 'assets/heroes/joao-ult-garden.png';
+    const fxSrc = ult.id === 'bloom' ? 'assets/fx/bloom.png' : 'assets/fx/garden.png';
+    $('#ult-sprite').src = poseSrc;
+    $('#ult-effect').src = fxSrc;
+    ov.classList.toggle('bloom', ult.id === 'bloom');
     const pet = $('#ult-petals');
     pet.innerHTML = '';
     for (let i = 0; i < 16; i++) {
@@ -1053,11 +1068,32 @@ function renderHud() {
     </div>`).join('');
 }
 
-const CANVAS = { hero: null };
+const CANVAS = { hero: null, heroPoses: {}, enemies: {} };
+function loadImg(src) { const i = new Image(); i.src = src; return i; }
 function loadSprites() {
-  const img = new Image();
-  img.src = HERO.sprite;
-  CANVAS.hero = img;
+  CANVAS.hero = loadImg(HERO.sprite);
+  CANVAS.heroPoses = {
+    attack: loadImg('assets/heroes/joao-attack.png'),
+    chains: loadImg('assets/heroes/joao-chains.png'),
+    thorns: loadImg('assets/heroes/joao-thorns.png'),
+    petals: loadImg('assets/heroes/joao-petals.png'),
+    prison: loadImg('assets/heroes/joao-prison.png'),
+    garden: loadImg('assets/heroes/joao-ult-garden.png'),
+    bloom:  loadImg('assets/heroes/joao-ult-bloom.png'),
+  };
+  CANVAS.enemies = {
+    rato:    loadImg('assets/enemies/rato.png'),
+    javali:  loadImg('assets/enemies/javali.png'),
+    batedor: loadImg('assets/enemies/batedor.png'),
+    bruto:   loadImg('assets/enemies/bruto.png'),
+    grug:    loadImg('assets/enemies/grug.png'),
+    'grug-enraged': loadImg('assets/enemies/grug-enraged.png'),
+  };
+}
+function setHeroPose(name, ms) {
+  if (!G.battle) return;
+  G.battle.heroPose = name;
+  G.battle.heroPoseUntil = performance.now() + ms;
 }
 
 function drawLoop(now) {
@@ -1095,8 +1131,8 @@ function drawLoop(now) {
   if (!b) return;
 
   // posições
-  const heroPos = { x: 200, y: 452 };
-  const slots = [ {x:700,y:452}, {x:850,y:430}, {x:590,y:418} ];
+  const heroPos = { x: 210, y: 470 };
+  const slots = [ {x:690,y:470}, {x:865,y:446}, {x:545,y:430} ];
 
   drawHero(ctx, b.hero, heroPos, now);
   b.enemies.forEach((e, i) => drawEnemy(ctx, e, slots[i] || slots[0], now));
@@ -1124,7 +1160,12 @@ function unitShake(u, now) {
 }
 
 function drawHero(ctx, u, pos, now) {
-  const img = CANVAS.hero;
+  let img = CANVAS.hero;
+  const b = G.battle;
+  if (b && b.heroPose && now < b.heroPoseUntil) {
+    const p = CANVAS.heroPoses[b.heroPose];
+    if (p && p.complete && p.naturalWidth) img = p;
+  }
   const bob = Math.sin(now / 600 + u.bob) * 4;
   const sx = unitShake(u, now);
   const x = pos.x + sx, y = pos.y + bob;
@@ -1141,20 +1182,22 @@ function drawHero(ctx, u, pos, now) {
     ctx.globalAlpha = u.alive ? 1 : 0.3;
   }
 
+  let topY = pos.y - 250;
   if (img && img.complete && img.naturalWidth) {
     const ratio = img.naturalWidth / img.naturalHeight;
-    let dh = 250, dw = dh * ratio;
-    if (dw > 250) { dw = 250; dh = dw / ratio; }
+    let dh = 262, dw = dh * ratio;
+    if (dw > 240) { dw = 240; dh = dw / ratio; }
     if (u.flashT && now < u.flashT) ctx.filter = 'brightness(2.2)';
     ctx.drawImage(img, x - dw / 2, y - dh, dw, dh);
     ctx.filter = 'none';
+    topY = y - dh;
   } else {
     ctx.fillStyle = '#4d8dff';
     ctx.fillRect(x - 32, y - 130, 64, 130);
   }
   ctx.restore();
 
-  drawHudBars(ctx, u, pos.x, pos.y - 268, '#4fc98a');
+  drawHudBars(ctx, u, pos.x, topY - 20, '#4fc98a');
 }
 
 function drawEnemy(ctx, u, pos, now) {
@@ -1163,35 +1206,52 @@ function drawEnemy(ctx, u, pos, now) {
   const x = pos.x + sx, y = pos.y + bob;
 
   ctx.save();
-  ctx.globalAlpha = u.alive ? 1 : 0;
   if (!u.alive) { ctx.restore(); return; }
 
+  // aura de fúria pulsante
+  if (u.enraged) {
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(255,80,50,${0.10 + Math.abs(Math.sin(now/300))*0.10})`;
+    ctx.ellipse(pos.x, y - u.size * 1.1, u.size * 1.5, u.size * 1.7, 0, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // sombra + anel de turno
   ctx.beginPath();
-  ctx.fillStyle = u.enraged ? 'rgba(255,110,60,.20)' : 'rgba(224,82,95,.14)';
-  ctx.ellipse(pos.x, pos.y + 6, u.size * 0.62, 15, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = u.enraged ? 'rgba(255,110,60,.22)' : 'rgba(224,82,95,.16)';
+  ctx.ellipse(pos.x, pos.y + 6, u.size * 0.7, 16, 0, 0, Math.PI * 2); ctx.fill();
   if (G.battle.active?.uid === u.uid) {
     ctx.beginPath(); ctx.strokeStyle = '#d8b45a'; ctx.lineWidth = 3;
     ctx.globalAlpha = .5 + Math.sin(now / 240) * .3;
-    ctx.ellipse(pos.x, pos.y + 6, u.size * 0.7, 20, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.ellipse(pos.x, pos.y + 6, u.size * 0.8, 20, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.globalAlpha = 1;
   }
 
-  ctx.font = `${u.size}px serif`;
-  ctx.textAlign = 'center';
-  if (u.flashT && now < u.flashT) { ctx.save(); ctx.filter = 'brightness(2.4) saturate(.4)'; }
-  ctx.fillText(u.icon, x, y);
-  if (u.flashT && now < u.flashT) ctx.restore();
-  if (u.crown) { ctx.font = `${Math.round(u.size * .42)}px serif`; ctx.fillText('👑', x + 6, y - u.size * 0.84); }
-  if (u.enraged) { ctx.font = '26px serif'; ctx.fillText('🔥', x - u.size * .55, y - u.size * .7); }
+  let key = u.kind;
+  if (u.kind === 'grug' && u.enraged) key = 'grug-enraged';
+  const img = CANVAS.enemies[key];
+  let topY = y - u.size * 2;
+  if (img && img.complete && img.naturalWidth) {
+    const ratio = img.naturalWidth / img.naturalHeight;
+    let dh = u.size * 2.35, dw = dh * ratio;
+    const maxW = u.boss ? 300 : 210;
+    if (dw > maxW) { dw = maxW; dh = dw / ratio; }
+    if (u.flashT && now < u.flashT) ctx.filter = 'brightness(2.3) saturate(.6)';
+    ctx.drawImage(img, x - dw / 2, y - dh, dw, dh);
+    ctx.filter = 'none';
+    topY = y - dh;
+  } else {
+    ctx.font = `${u.size}px serif`; ctx.textAlign = 'center';
+    ctx.fillText(u.icon, x, y);
+    topY = y - u.size;
+  }
   ctx.restore();
 
-  drawHudBars(ctx, u, pos.x, y - u.size - 44, '#ff656f');
+  drawHudBars(ctx, u, pos.x, topY - 16, '#ff656f');
 
-  // tags de status do inimigo
   if (u.statuses.length) {
     const labels = { poison:'☠️', slow:'🐌', stun:'💫', regen:'✨' };
-    ctx.font = '15px serif'; ctx.textAlign = 'center';
-    ctx.fillText(u.statuses.map(s => labels[s.type] || '').join(' '), pos.x, y - u.size - 50);
+    ctx.font = '16px serif'; ctx.textAlign = 'center';
+    ctx.fillText(u.statuses.map(s => labels[s.type] || '').join(' '), pos.x, topY - 22);
   }
 }
 
