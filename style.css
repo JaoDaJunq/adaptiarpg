@@ -132,8 +132,10 @@ button:disabled { opacity: .38; cursor: not-allowed; }
 .slot-actions { display: flex; gap: 8px; }
 
 /* ── história ── */
-.story-screen.active { display: grid; place-items: center; }
-.story-stage { width: min(880px, 100%); text-align: center; }
+.story-screen.active { display: grid; place-items: center; position: relative; }
+#story-bg { position: absolute; inset: 0; background-size: cover; background-position: center; z-index: 0; }
+#story-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(6,8,14,.70), rgba(6,8,14,.88)); }
+.story-stage { width: min(880px, 100%); text-align: center; position: relative; z-index: 1; }
 .story-portrait {
   width: 190px; height: 190px; margin: 0 auto 26px;
   border-radius: 50%;

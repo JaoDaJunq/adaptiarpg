@@ -96,14 +96,14 @@ const STAGES = [
     id:'1-1', name:'Trilha dos Ratos', icon:'🐀',
     desc:'Ratos gigantes bloqueiam a trilha de entrada das Colinas.',
     waves:[ ['rato','rato'] ],
-    tutorial:'basics', clearBonus:30,
+    tutorial:'basics', clearBonus:30, bg:'assets/bg/colinas.jpg',
     drops:{ pocao_menor:2 },
   },
   {
     id:'1-2', name:'Clareira dos Javalis', icon:'🐗',
     desc:'Javalis enfurecidos pela corrupção de Malvorax. Golpes pesados — use seu alforje.',
     waves:[ ['javali','rato'] ],
-    tutorial:'items', clearBonus:35,
+    tutorial:'items', clearBonus:35, bg:'assets/bg/clareira.jpg',
     grantOnEnter:{ pocao_menor:2 },
     drops:{ pocao_menor:1, elixir_azul:1 },
   },
@@ -111,14 +111,14 @@ const STAGES = [
     id:'1-3', name:'Emboscada Goblin', icon:'⚔️',
     desc:'Uma horda goblin ataca em ondas. Sobreviva a todas para avançar.',
     waves:[ ['batedor','batedor'], ['batedor','bruto'], ['bruto','bruto'] ],
-    tutorial:'horde', clearBonus:50,
+    tutorial:'horde', clearBonus:50, bg:'assets/bg/emboscada.jpg',
     drops:{ pocao_maior:1, tonico:1 },
   },
   {
     id:'1-4', name:'Salão do Rei Goblin', icon:'👑', boss:true,
     desc:'Grug aguarda no coração das Colinas. Derrote-o e liberte a região.',
     waves:[ ['grug','batedor'] ],
-    tutorial:'boss', clearBonus:80,
+    tutorial:'boss', clearBonus:80, bg:'assets/bg/salao-goblin.jpg',
     drops:{ pocao_maior:2, elixir_azul:1 },
   },
 ];
@@ -236,7 +236,7 @@ function renderSlots() {
         G.slot = i;
         if (act === 'new') {
           G.save = newSave(); persist();
-          playStory(STORY_INTRO, () => { renderSelect(); show('select'); });
+          playStory(STORY_INTRO, () => { renderSelect(); show('select'); }, 'assets/bg/trono.jpg');
         } else {
           G.save = readSlot(i);
           if (!G.save.hero) { renderSelect(); show('select'); }
@@ -251,8 +251,10 @@ function renderSlots() {
 /* ═══════════════════ TELA: HISTÓRIA ═══════════════════ */
 const story = { scenes: [], idx: 0, typing: null, done: null };
 
-function playStory(scenes, done) {
+function playStory(scenes, done, bg) {
   story.scenes = scenes; story.idx = 0; story.done = done;
+  const sb = $('#story-bg');
+  sb.style.backgroundImage = bg ? `url(${bg})` : 'none';
   show('story');
   renderScene();
 }
@@ -361,7 +363,7 @@ function renderMap() {
 function enterStage(stage) {
   if (stage.id === '1-4' && !G.save.flags.preBossSeen) {
     G.save.flags.preBossSeen = true; persist();
-    playStory(STORY_PRE_BOSS, () => startBattle(stage));
+    playStory(STORY_PRE_BOSS, () => startBattle(stage), 'assets/bg/salao-goblin.jpg');
   } else {
     startBattle(stage);
   }
@@ -1000,7 +1002,7 @@ function finishBattle(victory) {
     if (leveled > 0) queueTutorial('skillup', 'tut_skillup');
     if (isBoss && !s.flags.epilogueSeen) {
       s.flags.epilogueSeen = true; persist();
-      playStory(STORY_EPILOGUE, () => { renderMap(); show('map'); });
+      playStory(STORY_EPILOGUE, () => { renderMap(); show('map'); }, 'assets/bg/colinas.jpg');
     } else {
       renderMap(); show('map');
     }
@@ -1068,7 +1070,7 @@ function renderHud() {
     </div>`).join('');
 }
 
-const CANVAS = { hero: null, heroPoses: {}, enemies: {} };
+const CANVAS = { hero: null, heroPoses: {}, enemies: {}, bgs: {} };
 function loadImg(src) { const i = new Image(); i.src = src; return i; }
 function loadSprites() {
   CANVAS.hero = loadImg(HERO.sprite);
@@ -1089,6 +1091,12 @@ function loadSprites() {
     grug:    loadImg('assets/enemies/grug.png'),
     'grug-enraged': loadImg('assets/enemies/grug-enraged.png'),
   };
+  CANVAS.bgs = {
+    'assets/bg/colinas.jpg':      loadImg('assets/bg/colinas.jpg'),
+    'assets/bg/clareira.jpg':     loadImg('assets/bg/clareira.jpg'),
+    'assets/bg/emboscada.jpg':    loadImg('assets/bg/emboscada.jpg'),
+    'assets/bg/salao-goblin.jpg': loadImg('assets/bg/salao-goblin.jpg'),
+  };
 }
 function setHeroPose(name, ms) {
   if (!G.battle) return;
@@ -1105,28 +1113,41 @@ function drawLoop(now) {
   const W = cv.width, H = cv.height;
   ctx.clearRect(0, 0, W, H);
 
-  // céu noturno + colinas
-  const sky = ctx.createLinearGradient(0, 0, 0, H);
-  sky.addColorStop(0, '#101a33');
-  sky.addColorStop(.55, '#0a1122');
-  sky.addColorStop(1, '#070c18');
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, W, H);
-  // lua
-  ctx.beginPath(); ctx.fillStyle = 'rgba(220,232,255,.85)';
-  ctx.arc(W - 130, 86, 34, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.fillStyle = 'rgba(220,232,255,.10)';
-  ctx.arc(W - 130, 86, 58, 0, Math.PI * 2); ctx.fill();
-  // colinas
-  ctx.fillStyle = '#0c1526';
-  ctx.beginPath(); ctx.ellipse(180, 470, 380, 130, 0, Math.PI, 0); ctx.fill();
-  ctx.fillStyle = '#0e1930';
-  ctx.beginPath(); ctx.ellipse(760, 490, 420, 150, 0, Math.PI, 0); ctx.fill();
-  // chão
-  ctx.fillStyle = '#101b2f';
-  ctx.fillRect(0, 430, W, H - 430);
-  ctx.strokeStyle = 'rgba(216,180,90,.12)';
-  ctx.beginPath(); ctx.moveTo(0, 430); ctx.lineTo(W, 430); ctx.stroke();
+  const bgImg = b && b.stage.bg ? CANVAS.bgs[b.stage.bg] : null;
+  if (bgImg && bgImg.complete && bgImg.naturalWidth) {
+    // cover, alinhado à base para o chão ficar sob os pés
+    const scale = Math.max(W / bgImg.naturalWidth, H / bgImg.naturalHeight);
+    const dw = bgImg.naturalWidth * scale, dh = bgImg.naturalHeight * scale;
+    const dx = (W - dw) / 2, dy = H - dh;
+    ctx.drawImage(bgImg, dx, dy, dw, dh);
+    // vinheta + escurecimento inferior para leitura dos sprites/HUD
+    const vg = ctx.createLinearGradient(0, 0, 0, H);
+    vg.addColorStop(0, 'rgba(6,9,18,.32)');
+    vg.addColorStop(.55, 'rgba(6,9,18,.05)');
+    vg.addColorStop(1, 'rgba(4,6,12,.62)');
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(6,9,16,.28)'; ctx.fillRect(0, H - 90, W, 90);
+  } else {
+    // fallback: céu procedural
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, '#101a33');
+    sky.addColorStop(.55, '#0a1122');
+    sky.addColorStop(1, '#070c18');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, H);
+    ctx.beginPath(); ctx.fillStyle = 'rgba(220,232,255,.85)';
+    ctx.arc(W - 130, 86, 34, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.fillStyle = 'rgba(220,232,255,.10)';
+    ctx.arc(W - 130, 86, 58, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0c1526';
+    ctx.beginPath(); ctx.ellipse(180, 470, 380, 130, 0, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = '#0e1930';
+    ctx.beginPath(); ctx.ellipse(760, 490, 420, 150, 0, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = '#101b2f';
+    ctx.fillRect(0, 430, W, H - 430);
+    ctx.strokeStyle = 'rgba(216,180,90,.12)';
+    ctx.beginPath(); ctx.moveTo(0, 430); ctx.lineTo(W, 430); ctx.stroke();
+  }
 
   if (!b) return;
 
