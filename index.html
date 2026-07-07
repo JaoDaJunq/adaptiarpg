@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Reino de Adaptia — Capítulo 1</title>
+  <title>Reino de Adaptia — Capítulo I</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Alegreya:ital,wght@0,400;0,600;0,800;1,400&display=swap" rel="stylesheet">
@@ -14,27 +14,27 @@
 
   <!-- ══════════ TÍTULO ══════════ -->
   <section id="screen-title" class="screen active">
+    <div class="title-bg"></div>
     <div class="title-wrap">
-      <p class="title-kicker">Um RPG por turnos da Ordem dos Seis</p>
+      <div class="title-crest">🌹</div>
+      <p class="title-kicker">A Ordem dos Seis</p>
       <h1 class="game-title">Reino de<br><span>Adaptia</span></h1>
       <p class="title-sub">Capítulo I — As Colinas de Lajeado</p>
       <div class="title-actions">
-        <button id="btn-title-start" class="btn-royal">Iniciar Jornada</button>
+        <button id="btn-title-start" class="btn-royal btn-xl">⚔ Iniciar Jornada</button>
       </div>
-      <p class="title-foot">v1.0 · protótipo do capítulo 1</p>
+      <p class="title-foot">v1.0 · Protótipo · Capítulo I</p>
     </div>
   </section>
 
   <!-- ══════════ SLOTS DE SAVE ══════════ -->
   <section id="screen-slots" class="screen">
     <header class="scr-head">
+      <button class="btn-back" id="btn-slots-back">‹ Voltar</button>
       <p class="eyebrow">Crônicas do Reino</p>
-      <h2>Escolha um registro</h2>
+      <h2>Escolha um Registro</h2>
     </header>
     <div id="slot-list" class="slot-list"></div>
-    <div class="scr-foot">
-      <button id="btn-slots-back" class="btn-ghost">Voltar</button>
-    </div>
   </section>
 
   <!-- ══════════ HISTÓRIA / DIÁLOGO ══════════ -->
@@ -46,7 +46,7 @@
         <p id="story-speaker" class="story-speaker">—</p>
         <p id="story-text" class="story-text"></p>
         <div class="story-controls">
-          <span class="story-hint">Clique ou pressione Espaço para continuar</span>
+          <span class="story-hint">Clique ou Espaço para continuar</span>
           <button id="btn-story-skip" class="btn-ghost small">Pular ›</button>
         </div>
       </div>
@@ -56,13 +56,14 @@
   <!-- ══════════ SELEÇÃO DE LÍDER ══════════ -->
   <section id="screen-select" class="screen">
     <header class="scr-head">
+      <button class="btn-back" id="btn-select-back">‹ Voltar</button>
       <p class="eyebrow">A Ordem dos Seis</p>
-      <h2>Escolha seu líder</h2>
+      <h2>Escolha seu Líder</h2>
       <p class="scr-sub">Apenas João atende ao chamado neste capítulo. Os demais heróis chegarão nas próximas crônicas.</p>
     </header>
     <div id="hero-grid" class="hero-grid"></div>
     <div class="scr-foot">
-      <button id="btn-select-confirm" class="btn-royal" disabled>Partir para as Colinas</button>
+      <button id="btn-select-confirm" class="btn-royal btn-xl" disabled>⚔ Partir para as Colinas</button>
     </div>
   </section>
 
@@ -86,7 +87,7 @@
         <div class="mh-actions">
           <button id="btn-map-tree" class="btn-gold">Árvore de Habilidades <span id="map-sp-badge" class="badge hidden">0</span></button>
           <button id="btn-map-bag" class="btn-ghost">Inventário</button>
-          <button id="btn-map-slots" class="btn-ghost small">Trocar registro</button>
+          <button id="btn-map-slots" class="btn-ghost small">‹ Trocar Registro</button>
         </div>
       </aside>
       <main class="map-main">
@@ -103,6 +104,7 @@
   <!-- ══════════ ÁRVORE DE HABILIDADES ══════════ -->
   <section id="screen-tree" class="screen">
     <header class="scr-head">
+      <button class="btn-back" id="btn-tree-back">‹ Voltar ao Mapa</button>
       <p class="eyebrow">Grimório de João</p>
       <h2>Árvore de Habilidades</h2>
       <p class="scr-sub">Pontos disponíveis: <strong id="tree-sp">0</strong></p>
@@ -117,29 +119,27 @@
         <div id="tree-ults"></div>
       </div>
     </div>
-    <div class="scr-foot">
-      <button id="btn-tree-back" class="btn-royal">Voltar ao mapa</button>
-    </div>
   </section>
 
   <!-- ══════════ INVENTÁRIO ══════════ -->
   <section id="screen-bag" class="screen">
     <header class="scr-head">
+      <button class="btn-back" id="btn-bag-back">‹ Voltar ao Mapa</button>
       <p class="eyebrow">Alforje</p>
       <h2>Inventário</h2>
     </header>
     <div id="bag-list" class="bag-list"></div>
-    <div class="scr-foot">
-      <button id="btn-bag-back" class="btn-royal">Voltar ao mapa</button>
-    </div>
   </section>
 
   <!-- ══════════ BATALHA ══════════ -->
   <section id="screen-battle" class="screen battle-screen">
     <header class="battle-head">
-      <div>
-        <p class="eyebrow" id="battle-stage-id">Fase 1-1</p>
-        <h2 id="battle-stage-name">Trilha dos Ratos</h2>
+      <div class="battle-head-left">
+        <button class="btn-back btn-back-battle" id="btn-battle-back">‹ Abandonar</button>
+        <div>
+          <p class="eyebrow" id="battle-stage-id">Fase 1-1</p>
+          <h2 id="battle-stage-name">Trilha dos Ratos</h2>
+        </div>
       </div>
       <div id="battle-round" class="round-tag">Rodada 1</div>
     </header>
@@ -150,7 +150,7 @@
         <div id="wave-banner" class="wave-banner hidden"></div>
       </div>
       <aside class="battle-side">
-        <h4>Ordem de turnos</h4>
+        <h4>Ordem de Turnos</h4>
         <div id="turn-list" class="turn-list"></div>
         <h4>Crônica</h4>
         <div id="battle-log" class="battle-log"></div>
@@ -207,7 +207,7 @@
     <div class="ult-petals" id="ult-petals"></div>
     <img id="ult-sprite" src="assets/heroes/joao-ult-garden.png" alt="" />
     <div class="ult-shout">
-      <p class="ult-caller" id="ult-caller">João</p>
+      <p class="ult-caller" id="ult-caller">João invoca</p>
       <h2 id="ult-name">JARDIM DE FERRO!</h2>
     </div>
   </div>

@@ -742,6 +742,11 @@ function renderMenu(mode, ctx) {
   }
 }
 
+function reactEnemies(ms) {
+  if (!G.battle) return;
+  G.battle.enemies.filter(e => e.alive).forEach(e => setUnitPose(e, 'defend', ms));
+}
+
 async function endHeroAction() {
   const b = G.battle;
   renderMenu('waiting');
@@ -757,6 +762,7 @@ function doAttack(target) {
   if (b.busy) return; b.busy = true;
   const h = b.hero;
   setHeroPose('attack', 850);
+  reactEnemies(900);
   const d = applyDamage(h, target, h.atk + 6);
   log(`<strong class="hero">João</strong> golpeia <strong>${esc(target.name)}</strong> com a Rosa Azul: <strong>${d}</strong> de dano.`);
   gainMeter(h, 20);
@@ -767,8 +773,9 @@ function doSkill(sk, target) {
   const b = G.battle;
   if (b.busy) return; b.busy = true;
   const h = b.hero;
-  h.cds[sk.id] = sk.cd + 1; // +1 porque decrementa já no início do próximo turno dele
+  h.cds[sk.id] = sk.cd + 1;
   setHeroPose(sk.id, 900);
+  reactEnemies(900);
 
   if (sk.id === 'chains') {
     const d = applyDamage(h, target, h.atk + 12);
@@ -1074,7 +1081,7 @@ function renderHud() {
     </div>`).join('');
 }
 
-const CANVAS = { hero: null, heroPoses: {}, enemies: {}, enemyAttack: {}, bgs: {} };
+const CANVAS = { hero: null, heroPoses: {}, enemies: {}, enemyAttack: {}, enemyDefend: {}, bgs: {} };
 function loadImg(src) { const i = new Image(); i.src = src; return i; }
 function loadSprites() {
   CANVAS.hero = loadImg(HERO.sprite);
@@ -1089,11 +1096,11 @@ function loadSprites() {
     bloom:  loadImg('assets/heroes/joao-ult-bloom.png'),
   };
   CANVAS.enemies = {
-    rato:    loadImg('assets/enemies/rato-defend.png'),
-    javali:  loadImg('assets/enemies/javali-defend.png'),
-    batedor: loadImg('assets/enemies/batedor-defend.png'),
-    bruto:   loadImg('assets/enemies/bruto-defend.png'),
-    grug:    loadImg('assets/enemies/grug-defend.png'),
+    rato:    loadImg('assets/enemies/rato.png'),
+    javali:  loadImg('assets/enemies/javali.png'),
+    batedor: loadImg('assets/enemies/batedor.png'),
+    bruto:   loadImg('assets/enemies/bruto.png'),
+    grug:    loadImg('assets/enemies/grug.png'),
     'grug-enraged': loadImg('assets/enemies/grug-enraged.png'),
   };
   CANVAS.enemyAttack = {
@@ -1103,6 +1110,14 @@ function loadSprites() {
     bruto:   loadImg('assets/enemies/bruto-attack.png'),
     grug:    loadImg('assets/enemies/grug-attack.png'),
     'grug-enraged': loadImg('assets/enemies/grug-enraged-attack.png'),
+  };
+  CANVAS.enemyDefend = {
+    rato:    loadImg('assets/enemies/rato-defend.png'),
+    javali:  loadImg('assets/enemies/javali-defend.png'),
+    batedor: loadImg('assets/enemies/batedor-defend.png'),
+    bruto:   loadImg('assets/enemies/bruto-defend.png'),
+    grug:    loadImg('assets/enemies/grug-defend.png'),
+    'grug-enraged': loadImg('assets/enemies/grug-defend.png'),
   };
   CANVAS.bgs = {
     'assets/bg/colinas.jpg':      loadImg('assets/bg/colinas.jpg'),
@@ -1266,8 +1281,14 @@ function drawEnemy(ctx, u, pos, now) {
 
   let key = u.kind;
   if (u.kind === 'grug' && u.enraged) key = 'grug-enraged';
-  const attacking = u.pose === 'attack' && now < u.poseUntil;
-  const img = attacking ? (CANVAS.enemyAttack[key] || CANVAS.enemies[key]) : CANVAS.enemies[key];
+  let img;
+  if (u.pose === 'attack' && now < u.poseUntil) {
+    img = CANVAS.enemyAttack[key] || CANVAS.enemies[key];
+  } else if (u.pose === 'defend' && now < u.poseUntil) {
+    img = CANVAS.enemyDefend[key] || CANVAS.enemies[key];
+  } else {
+    img = CANVAS.enemies[key];
+  }
   let topY = y - u.size * 2;
   if (img && img.complete && img.naturalWidth) {
     const ratio = img.naturalWidth / img.naturalHeight;
@@ -1348,6 +1369,7 @@ function wire() {
   });
   $('#btn-story-skip').addEventListener('click', e => { e.stopPropagation(); endStory(); });
 
+  $('#btn-select-back').addEventListener('click', () => { renderSlots(); show('slots'); });
   $('#btn-select-confirm').addEventListener('click', () => {
     if (!pickedHero) return;
     G.save.hero = pickedHero; persist();
@@ -1359,6 +1381,12 @@ function wire() {
   $('#btn-map-slots').addEventListener('click', () => { renderSlots(); show('slots'); });
   $('#btn-tree-back').addEventListener('click', () => { renderMap(); show('map'); });
   $('#btn-bag-back').addEventListener('click', () => { renderMap(); show('map'); });
+
+  $('#btn-battle-back').addEventListener('click', () => {
+    if (!confirm('Abandonar a batalha? O progresso desta fase será perdido.')) return;
+    if (G.battle) { G.battle.over = true; G.battle = null; }
+    renderMap(); show('map');
+  });
 
   $('#btn-tut-ok').addEventListener('click', showNextTut);
   $('#btn-result-retry').addEventListener('click', () => startBattle(G.battle.stage));

@@ -88,10 +88,38 @@ button:disabled { opacity: .38; cursor: not-allowed; }
 .scr-head.left .scr-sub { margin-left: 0; }
 .scr-foot { text-align: center; padding: 26px 0 40px; display: flex; gap: 12px; justify-content: center; }
 
-/* ── título ── */
-#screen-title.active { display: grid; place-items: center; }
-.title-wrap { text-align: center; padding: 40px 20px; }
-.title-kicker { font-family: var(--display); letter-spacing: .3em; text-transform: uppercase; font-size: 13px; color: var(--muted); }
+/* ── botão de voltar ── */
+.btn-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--display); font-size: 13px; font-weight: 700;
+  letter-spacing: .08em; color: var(--muted);
+  border: 1px solid var(--line-soft); border-radius: 8px;
+  padding: 7px 14px; transition: color .12s, border-color .12s;
+  margin-bottom: 10px;
+}
+.btn-back:hover { color: var(--gold); border-color: var(--gold); }
+.btn-back-battle { margin-bottom: 0; }
+.battle-head-left { display: flex; align-items: center; gap: 14px; }
+
+/* ── título melhorado ── */
+#screen-title.active { display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; min-height: 100vh; }
+.title-bg {
+  position: absolute; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(77,141,255,.22), transparent 50%),
+    radial-gradient(ellipse at 20% 80%, rgba(143,36,56,.28), transparent 45%),
+    radial-gradient(ellipse at 85% 75%, rgba(216,180,90,.12), transparent 40%);
+}
+.title-bg::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: repeating-linear-gradient(0deg, rgba(216,180,90,.04) 0, rgba(216,180,90,.04) 1px, transparent 1px, transparent 60px),
+    repeating-linear-gradient(90deg, rgba(216,180,90,.04) 0, rgba(216,180,90,.04) 1px, transparent 1px, transparent 60px);
+}
+.title-wrap { position: relative; z-index: 1; text-align: center; padding: 40px 20px; }
+.title-crest { font-size: 56px; margin-bottom: 12px; filter: drop-shadow(0 0 22px rgba(77,141,255,.5)); }
+.title-kicker { font-family: var(--display); letter-spacing: .3em; text-transform: uppercase; font-size: 13px; color: var(--muted); margin: 0 0 6px; }
+.btn-xl { font-size: 20px; padding: 18px 46px; }
 .game-title {
   font-family: var(--display);
   font-weight: 900;
