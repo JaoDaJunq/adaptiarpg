@@ -93,14 +93,14 @@ const ENEMIES = {
 /* ═══════════════════ DADOS: FASES ═══════════════════ */
 const STAGES = [
   {
-    id:'1-1', name:'Trilha dos Ratos', icon:'🐀',
+    id:'1-1', name:'Trilha dos Ratos', icon:'🐀', iconImg:'assets/stages/ratos.png',
     desc:'Ratos gigantes bloqueiam a trilha de entrada das Colinas.',
     waves:[ ['rato','rato'] ],
     tutorial:'basics', clearBonus:30, bg:'assets/bg/colinas.jpg',
     drops:{ pocao_menor:2 },
   },
   {
-    id:'1-2', name:'Clareira dos Javalis', icon:'🐗',
+    id:'1-2', name:'Clareira dos Javalis', icon:'🐗', iconImg:'assets/stages/javalis.png',
     desc:'Javalis enfurecidos pela corrupção de Malvorax. Golpes pesados — use seu alforje.',
     waves:[ ['javali','rato'] ],
     tutorial:'items', clearBonus:35, bg:'assets/bg/clareira.jpg',
@@ -108,14 +108,14 @@ const STAGES = [
     drops:{ pocao_menor:1, elixir_azul:1 },
   },
   {
-    id:'1-3', name:'Emboscada Goblin', icon:'⚔️',
+    id:'1-3', name:'Emboscada Goblin', icon:'⚔️', iconImg:'assets/stages/goblins.png',
     desc:'Uma horda goblin ataca em ondas. Sobreviva a todas para avançar.',
     waves:[ ['batedor','batedor'], ['batedor','bruto'], ['bruto','bruto'] ],
     tutorial:'horde', clearBonus:50, bg:'assets/bg/emboscada.jpg',
     drops:{ pocao_maior:1, tonico:1 },
   },
   {
-    id:'1-4', name:'Salão do Rei Goblin', icon:'👑', boss:true,
+    id:'1-4', name:'Salão do Rei Goblin', icon:'👑', iconImg:'assets/stages/grug-boss.png', boss:true,
     desc:'Grug aguarda no coração das Colinas. Derrote-o e liberte a região.',
     waves:[ ['grug','batedor'] ],
     tutorial:'boss', clearBonus:80, bg:'assets/bg/salao-goblin.jpg',
@@ -348,7 +348,7 @@ function renderMap() {
     const node = document.createElement('div');
     node.className = 'stage-node ' + (stage.boss?'boss ':'') + (unlocked ? 'unlocked' : 'locked') + (cleared ? ' cleared' : '');
     node.innerHTML = `
-      <div class="sn-icon">${stage.icon}</div>
+      <div class="sn-icon">${stage.iconImg ? `<img src="${stage.iconImg}" alt="">` : stage.icon}</div>
       <div class="sn-body">
         <p class="eyebrow">Fase ${stage.id}${stage.boss ? ' · CHEFE' : ''}${stage.waves.length>1 ? ' · '+stage.waves.length+' ondas' : ''}</p>
         <h3>${esc(stage.name)}</h3>

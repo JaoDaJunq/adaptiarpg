@@ -219,7 +219,8 @@ button:disabled { opacity: .38; cursor: not-allowed; }
 .stage-node.locked { opacity: .45; }
 .stage-node.boss { border-color: rgba(143,36,56,.55); background: linear-gradient(180deg, rgba(143,36,56,.14), var(--panel)); }
 .stage-connector { width: 3px; height: 26px; margin-left: 46px; background: linear-gradient(180deg, var(--line), transparent); }
-.sn-icon { font-size: 40px; width: 62px; height: 62px; display: grid; place-items: center; background: rgba(0,0,0,.3); border-radius: 14px; border: 1px solid var(--line-soft); flex: none; }
+.sn-icon { font-size: 40px; width: 62px; height: 62px; display: grid; place-items: center; background: rgba(0,0,0,.3); border-radius: 14px; border: 1px solid var(--line-soft); flex: none; overflow: hidden; }
+.sn-icon img { width: 100%; height: 100%; object-fit: cover; border-radius: 14px; }
 .sn-body { flex: 1; }
 .sn-body .eyebrow { font-size: 10px; letter-spacing: .2em; margin-bottom: 3px; }
 .sn-body h3 { font-family: var(--display); margin: 0 0 3px; font-size: 21px; }
