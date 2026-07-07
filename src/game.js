@@ -468,7 +468,7 @@ function buildEnemy(key, idx) {
     name:d.name, icon:d.icon, crown:!!d.crown, size:d.size, boss:!!d.boss,
     hp:d.hp, maxHp:d.hp, atk:d.atk, spd:d.spd, xp:d.xp, moves:d.moves,
     defending:false, alive:true, statuses:[], enraged:false, turnCount:0,
-    bob: Math.random()*10, shakeT:0, flashT:0,
+    bob: Math.random()*10, shakeT:0, flashT:0, pose:null, poseUntil:0,
   };
 }
 
@@ -823,6 +823,7 @@ function doDefend() {
   if (b.busy) return; b.busy = true;
   const h = b.hero;
   h.defending = true;
+  setHeroPose('defend', 900);
   gainMeter(h, 15);
   log(`<strong class="hero">João</strong> ergue as correntes em guarda. 🛡`);
   endHeroAction();
@@ -864,6 +865,7 @@ async function enemyAct(e) {
   let mv = e.moves[e.moves.length - 1];
   for (const m of e.moves) { if (Math.random() < m.chance) { mv = m; break; } }
   const hits = mv.hits || 1;
+  setUnitPose(e, 'attack', 550 + hits * 260 + 680);
   let total = 0;
   for (let i = 0; i < hits; i++) {
     total += applyDamage(e, h, e.atk * mv.mult);
@@ -892,12 +894,14 @@ async function bossAct(e) {
 
   const cycle = e.enraged ? 2 : 3;
   if (e.turnCount % cycle === 0) {
+    setUnitPose(e, 'attack', 1350);
     const d = applyDamage(e, h, e.atk * 1.8);
     log(`<strong>${esc(e.name)}</strong> solta o <strong>GRITO DEVASTADOR</strong>: <strong>${d}</strong> de dano brutal! 💥`);
   } else if (e.hp / e.maxHp < 0.7 && Math.random() < 0.25) {
     const heal = applyHeal(e, 40);
     log(`<strong>${esc(e.name)}</strong> devora rações goblins e recupera ${heal} de vida. 🍖`);
   } else {
+    setUnitPose(e, 'attack', 1350);
     const d = applyDamage(e, h, e.atk);
     log(`<strong>${esc(e.name)}</strong> esmaga <strong class="hero">João</strong> com a clava real: <strong>${d}</strong> de dano.`);
   }
@@ -1070,7 +1074,7 @@ function renderHud() {
     </div>`).join('');
 }
 
-const CANVAS = { hero: null, heroPoses: {}, enemies: {}, bgs: {} };
+const CANVAS = { hero: null, heroPoses: {}, enemies: {}, enemyAttack: {}, bgs: {} };
 function loadImg(src) { const i = new Image(); i.src = src; return i; }
 function loadSprites() {
   CANVAS.hero = loadImg(HERO.sprite);
@@ -1080,16 +1084,25 @@ function loadSprites() {
     thorns: loadImg('assets/heroes/joao-thorns.png'),
     petals: loadImg('assets/heroes/joao-petals.png'),
     prison: loadImg('assets/heroes/joao-prison.png'),
+    defend: loadImg('assets/heroes/joao-defend.png'),
     garden: loadImg('assets/heroes/joao-ult-garden.png'),
     bloom:  loadImg('assets/heroes/joao-ult-bloom.png'),
   };
   CANVAS.enemies = {
-    rato:    loadImg('assets/enemies/rato.png'),
-    javali:  loadImg('assets/enemies/javali.png'),
-    batedor: loadImg('assets/enemies/batedor.png'),
-    bruto:   loadImg('assets/enemies/bruto.png'),
-    grug:    loadImg('assets/enemies/grug.png'),
+    rato:    loadImg('assets/enemies/rato-defend.png'),
+    javali:  loadImg('assets/enemies/javali-defend.png'),
+    batedor: loadImg('assets/enemies/batedor-defend.png'),
+    bruto:   loadImg('assets/enemies/bruto-defend.png'),
+    grug:    loadImg('assets/enemies/grug-defend.png'),
     'grug-enraged': loadImg('assets/enemies/grug-enraged.png'),
+  };
+  CANVAS.enemyAttack = {
+    rato:    loadImg('assets/enemies/rato-attack.png'),
+    javali:  loadImg('assets/enemies/javali-attack.png'),
+    batedor: loadImg('assets/enemies/batedor-attack.png'),
+    bruto:   loadImg('assets/enemies/bruto-attack.png'),
+    grug:    loadImg('assets/enemies/grug-attack.png'),
+    'grug-enraged': loadImg('assets/enemies/grug-enraged-attack.png'),
   };
   CANVAS.bgs = {
     'assets/bg/colinas.jpg':      loadImg('assets/bg/colinas.jpg'),
@@ -1102,6 +1115,10 @@ function setHeroPose(name, ms) {
   if (!G.battle) return;
   G.battle.heroPose = name;
   G.battle.heroPoseUntil = performance.now() + ms;
+}
+function setUnitPose(u, name, ms) {
+  u.pose = name;
+  u.poseUntil = performance.now() + ms;
 }
 
 function drawLoop(now) {
@@ -1249,7 +1266,8 @@ function drawEnemy(ctx, u, pos, now) {
 
   let key = u.kind;
   if (u.kind === 'grug' && u.enraged) key = 'grug-enraged';
-  const img = CANVAS.enemies[key];
+  const attacking = u.pose === 'attack' && now < u.poseUntil;
+  const img = attacking ? (CANVAS.enemyAttack[key] || CANVAS.enemies[key]) : CANVAS.enemies[key];
   let topY = y - u.size * 2;
   if (img && img.complete && img.naturalWidth) {
     const ratio = img.naturalWidth / img.naturalHeight;
