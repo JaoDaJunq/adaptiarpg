@@ -8,11 +8,29 @@ const rand = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const esc = t => String(t).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
 
+/* ═══════════════════ DADOS: ATRIBUTOS (ver design/gdd/sistema-de-builds.md) ═══════════════════ */
+const ATTRS = ['hp','atk','atkEsp','defFis','defMag','vel','let'];
+const ATTR_INFO = {
+  hp:     { label:'VIDA',     gain:10 },
+  atk:    { label:'ATAQUE',   gain:2 },
+  atkEsp: { label:'ATQ.ESP',  gain:2 },
+  defFis: { label:'DEF.FÍS',  gain:2 },
+  defMag: { label:'DEF.MÁG',  gain:2 },
+  vel:    { label:'VELOC.',   gain:2 },
+  let:    { label:'LETAL.',   gain:1 }, // % de crítico
+};
+const POINTS_PER_LEVEL = 3;
+const ALLOC_CAP = 30;        // máx. de melhorias por atributo
+const LET_CAP = 60;          // teto rígido de chance de crítico (%)
+const CRIT_MULT = 1.5;
+
 /* ═══════════════════ DADOS: HERÓI ═══════════════════ */
 const HERO = {
   id: 'joao', name: 'João', title: 'Rosa Azul / Correntes',
   portrait: 'assets/joao.png', sprite: 'assets/joao-battle.png',
-  baseHp: 300, hpGrow: 45, baseAtk: 30, atkGrow: 5, baseSpd: 70, spdGrow: 2,
+  base: { hp:300, atk:20, atkEsp:30, defFis:20, defMag:24, vel:70, let:5 },
+  grow: { hp:12,  atk:1,  atkEsp:2,  defFis:1,  defMag:1,  vel:1,  let:0 },
+  affinities: ['hp','atkEsp','defMag'],
   lore: 'Cavaleiro-arcano da Ordem dos Seis. Empunha a Rosa Azul, relíquia que converte vontade em correntes de energia.'
 };
 const LOCKED_HEROES = [
@@ -23,46 +41,132 @@ const LOCKED_HEROES = [
   { id:'djonga', name:'Djonga', title:'Punhos de Impacto', portrait:'assets/djonga.png' },
 ];
 
-const MAX_LEVEL = 10;
-const xpForNext = lvl => Math.round(60 * Math.pow(lvl, 1.45));
-const heroStats = lvl => ({
-  maxHp: HERO.baseHp + HERO.hpGrow * (lvl-1),
-  atk:   HERO.baseAtk + HERO.atkGrow * (lvl-1),
-  spd:   HERO.baseSpd + HERO.spdGrow * (lvl-1),
-});
+const MAX_LEVEL = 50;
+const xpForNext = lvl => Math.round(60 * Math.pow(lvl, 1.5));
+
+/* Atributos finais = base + crescimento automático + melhorias investidas */
+function computeStats(save) {
+  const lvl = save.level, alloc = save.alloc || {};
+  const st = {};
+  ATTRS.forEach(a => {
+    st[a] = HERO.base[a] + Math.floor(HERO.grow[a] * (lvl-1)) + (alloc[a]||0) * ATTR_INFO[a].gain;
+  });
+  st.let = Math.min(st.let, LET_CAP);
+  st.maxHp = st.hp;
+  return st;
+}
+const allocCost = attr => HERO.affinities.includes(attr) ? 1 : 2;
+
+/* Uma habilidade está desbloqueada se o nível bate e a vocação/caminho conferem */
+function skillUnlocked(save, sk) {
+  if (save.level < sk.unlock) return false;
+  if (sk.voc && save.vocacao !== sk.voc) return false;
+  if (sk.caminho && save.caminho !== sk.caminho) return false;
+  return true;
+}
+function ownedSkills(save) { return Object.values(SKILLS).filter(sk => skillUnlocked(save, sk)); }
+function battleLoadout(save) {
+  return (save.loadout || []).filter(id => SKILLS[id] && skillUnlocked(save, SKILLS[id])).slice(0, 5);
+}
+function currentUlt(save) {
+  if (save.activeUlt === 'bloom' && save.vocacao === 'rosa') return ULTIMATES.bloom;
+  return ULTIMATES.garden;
+}
 
 /* ═══════════════════ DADOS: HABILIDADES ═══════════════════ */
+/* type: 'mag' usa Atq.Especial vs Def.Mágica | 'fis' usa Ataque vs Def.Física
+   power: multiplicador da fórmula Dano = power × (Atq ÷ Def) × variação
+   unlock: nível em que desbloqueia | voc/caminho: exigência de vocação/caminho */
 const SKILLS = {
+  /* ── TRONCO (níveis 1 / 5 / 10 / 15 — igual para todos os heróis) ── */
   chains: {
-    id:'chains', name:'Correntes Azuis', starter:true, cost:0, reqLevel:1, cd:2,
+    id:'chains', name:'Correntes Azuis', type:'mag', power:17, unlock:1, cd:2,
     desc:'Prende o alvo com correntes de energia. Dano moderado e reduz a velocidade do inimigo por 2 turnos.',
     hint:'Dano + Lentidão'
   },
   thorns: {
-    id:'thorns', name:'Espinhos da Rosa', cost:1, reqLevel:2, cd:3,
+    id:'thorns', name:'Espinhos da Rosa', type:'mag', power:14, unlock:5, cd:3,
     desc:'Espinhos vítreos perfuram o alvo, envenenando-o. Dano leve + 12 de veneno por 3 turnos.',
     hint:'Dano + Veneno'
   },
   petals: {
-    id:'petals', name:'Pétalas Vítreas', cost:1, reqLevel:3, cd:4,
+    id:'petals', name:'Pétalas Vítreas', type:'mag', power:0, unlock:10, cd:4,
     desc:'A Rosa Azul floresce em volta de João, restaurando 30% da vida e assumindo postura defensiva até o próximo turno.',
     hint:'Cura 30% + Defesa'
   },
   prison: {
-    id:'prison', name:'Prisão de Ferro', cost:2, reqLevel:4, cd:4,
+    id:'prison', name:'Prisão de Ferro', type:'mag', power:20, unlock:15, cd:4,
     desc:'Correntes pesadas esmagam o alvo. Dano alto e atordoa por 1 turno.',
     hint:'Dano alto + Atordoamento'
   },
+  /* ── VOCAÇÃO DO FERRO (nível 20+) ── */
+  gemeas: {
+    id:'gemeas', name:'Correntes Gêmeas', type:'mag', power:14, unlock:25, voc:'ferro', cd:3,
+    desc:'Duas correntes disparam ao mesmo tempo: atingem 2 inimigos e aplicam lentidão em ambos.',
+    hint:'2 alvos + Lentidão'
+  },
+  tranca: {
+    id:'tranca', name:'Tranca Absoluta', type:'mag', power:16, unlock:35, voc:'ferro', caminho:'carcereiro', cd:4,
+    desc:'A prisão definitiva: dano moderado, atordoa por 1 turno e aplica lentidão por 2.',
+    hint:'Atordoa + Lentidão'
+  },
+  guilhotina: {
+    id:'guilhotina', name:'Guilhotina de Elos', type:'mag', power:26, unlock:35, voc:'ferro', caminho:'executor', cd:4,
+    desc:'Elos afiados caem sobre o alvo. Dano brutal — ainda maior se o alvo estiver lento ou atordoado.',
+    hint:'Dano brutal + bônus vs controlados'
+  },
+  /* ── VOCAÇÃO DA ROSA (nível 20+) ── */
+  roseira: {
+    id:'roseira', name:'Roseira Guardiã', type:'mag', power:0, unlock:25, voc:'rosa', cd:4,
+    desc:'Uma roseira de vidro brota e envolve João: cura forte e regeneração por 3 turnos.',
+    hint:'Cura + Regeneração'
+  },
+  chuva: {
+    id:'chuva', name:'Chuva de Pétalas', type:'mag', power:0, unlock:35, voc:'rosa', caminho:'jardineiro', cd:5,
+    desc:'Pétalas curativas cobrem o campo: cura 25% da vida e purifica veneno e lentidão.',
+    hint:'Cura 25% + Purifica'
+  },
+  mortifera: {
+    id:'mortifera', name:'Rosa Mortífera', type:'mag', power:15, unlock:35, voc:'rosa', caminho:'venenoso', cd:4,
+    desc:'A rosa mostra o outro lado da beleza: dano moderado + veneno devastador (20 por 3 turnos).',
+    hint:'Dano + Veneno forte'
+  },
 };
+
+/* Vocações e caminhos do João (bifurcação no nível 20; caminho no 30) */
+const VOC_LEVEL = 20, PATH_LEVEL = 30, APEX_LEVEL = 50;
+const VOCACOES = {
+  ferro: {
+    id:'ferro', name:'Vocação do Ferro', icon:'⛓️',
+    tagline:'Controle absoluto — correntes, prisões e atordoamento.',
+    passive:'Peso das Correntes: +15% de dano em alvos com lentidão ou atordoamento.',
+    caminhos: {
+      carcereiro: { id:'carcereiro', name:'Carcereiro', desc:'Ninguém escapa: mais atordoamento e lentidão.' },
+      executor:   { id:'executor',   name:'Executor',   desc:'Dano pesado contra alvos controlados.' },
+    },
+    apex:'Nível 50 — Jardim de Ferro: Forma Final (dano maior + atordoa TODOS os inimigos).'
+  },
+  rosa: {
+    id:'rosa', name:'Vocação da Rosa', icon:'🌹',
+    tagline:'A rosa viva — cura, veneno e resistência.',
+    passive:'Seiva Vital: toda cura de João também aplica regeneração por 2 turnos.',
+    caminhos: {
+      jardineiro: { id:'jardineiro', name:'Jardineiro', desc:'Cura amplificada e purificação.' },
+      venenoso:   { id:'venenoso',   name:'Venenoso',   desc:'O espinho por trás da pétala: veneno devastador.' },
+    },
+    apex:'Nível 50 — Florescer: Forma Final (cura 50% + regeneração prolongada).'
+  },
+};
+
 const ULTIMATES = {
   garden: {
-    id:'garden', name:'Jardim de Ferro', starter:true, cost:0, reqLevel:1,
+    id:'garden', name:'Jardim de Ferro', starter:true,
     shout:'JARDIM DE FERRO!',
     desc:'Um jardim de correntes irrompe do chão: dano pesado em TODOS os inimigos e atordoa o alvo principal.',
     hint:'Dano em área + Atordoamento'
   },
   bloom: {
-    id:'bloom', name:'Jardim de Ferro: Florescer', cost:2, reqLevel:5,
+    id:'bloom', name:'Jardim de Ferro: Florescer', voc:'rosa',
     shout:'JARDIM DE FERRO... FLORESCER!',
     desc:'Variação vital do Jardim: dano em área menor, mas cura 35% da vida de João e concede regeneração por 3 turnos.',
     hint:'Área + Cura 35% + Regeneração'
@@ -75,19 +179,21 @@ const ITEMS = {
   pocao_maior:  { id:'pocao_maior',  icon:'⚗️', img:'assets/items/pocao-maior.png', name:'Poção Maior',       desc:'Restaura 150 de vida.' },
   elixir_azul:  { id:'elixir_azul',  icon:'💠', img:'assets/items/elixir-azul.png', name:'Elixir Azul',       desc:'Carrega 50% do medidor de Ultimate.' },
   tonico:       { id:'tonico',       icon:'🌿', img:'assets/items/tonico.png',      name:'Tônico Purificante', desc:'Remove veneno e lentidão e cura 40 de vida.' },
+  capsula_reset:{ id:'capsula_reset', icon:'🔮', name:'Cápsula de Reset', noBattle:true, desc:'Redistribui todos os pontos de atributo e reabre a escolha de vocação. Use na Árvore de Habilidades.' },
 };
 
 /* ═══════════════════ DADOS: INIMIGOS ═══════════════════ */
+/* Fichas com os 7 atributos; cada golpe tem power + tipo (todos físicos por ora) */
 const ENEMIES = {
-  rato:    { id:'rato',    name:'Rato Selvagem',  icon:'🐀', size:58,  hp:55,  atk:9,  spd:62, xp:18,
-             moves:[{k:'bite', chance:1, mult:1, label:'morde'}] },
-  javali:  { id:'javali',  name:'Javali Feroz',   icon:'🐗', size:80,  hp:110, atk:15, spd:50, xp:32,
-             moves:[{k:'gore', chance:.35, mult:1.6, label:'usa <em>Investida</em> contra'}, {k:'hit', chance:1, mult:1, label:'chifra'}] },
-  batedor: { id:'batedor', name:'Goblin Batedor', icon:'👺', size:68,  hp:80,  atk:13, spd:72, xp:26,
-             moves:[{k:'dbl', chance:.3, mult:.75, hits:2, label:'desfere <em>Golpe Duplo</em> em'}, {k:'stab', chance:1, mult:1, label:'apunhala'}] },
-  bruto:   { id:'bruto',   name:'Goblin Bruto',   icon:'👹', size:92,  hp:150, atk:19, spd:45, xp:44,
-             moves:[{k:'smash', chance:.35, mult:1.5, label:'esmaga com a <em>Pancada Colossal</em>'}, {k:'club', chance:1, mult:1, label:'golpeia'}] },
-  grug:    { id:'grug',    name:'Grug, o Rei Goblin', icon:'👹', crown:true, size:150, hp:480, atk:22, spd:58, xp:220, boss:true },
+  rato:    { id:'rato',    name:'Rato Selvagem',  icon:'🐀', size:58,  hp:55,  atk:14, atkEsp:8,  defFis:12, defMag:10, spd:62, let:5,  xp:18,
+             moves:[{k:'bite', chance:1, power:13, type:'fis', label:'morde'}] },
+  javali:  { id:'javali',  name:'Javali Feroz',   icon:'🐗', size:80,  hp:110, atk:20, atkEsp:8,  defFis:20, defMag:12, spd:50, let:5,  xp:32,
+             moves:[{k:'gore', chance:.35, power:24, type:'fis', label:'usa <em>Investida</em> contra'}, {k:'hit', chance:1, power:15, type:'fis', label:'chifra'}] },
+  batedor: { id:'batedor', name:'Goblin Batedor', icon:'👺', size:68,  hp:80,  atk:18, atkEsp:10, defFis:14, defMag:14, spd:72, let:10, xp:26,
+             moves:[{k:'dbl', chance:.3, power:11, type:'fis', hits:2, label:'desfere <em>Golpe Duplo</em> em'}, {k:'stab', chance:1, power:15, type:'fis', label:'apunhala'}] },
+  bruto:   { id:'bruto',   name:'Goblin Bruto',   icon:'👹', size:92,  hp:150, atk:24, atkEsp:8,  defFis:22, defMag:12, spd:45, let:5,  xp:44,
+             moves:[{k:'smash', chance:.35, power:26, type:'fis', label:'esmaga com a <em>Pancada Colossal</em>'}, {k:'club', chance:1, power:17, type:'fis', label:'golpeia'}] },
+  grug:    { id:'grug',    name:'Grug, o Rei Goblin', icon:'👹', crown:true, size:150, hp:460, atk:26, atkEsp:12, defFis:20, defMag:13, spd:58, let:10, xp:220, boss:true },
 };
 
 /* ═══════════════════ DADOS: FASES ═══════════════════ */
@@ -119,7 +225,7 @@ const STAGES = [
     desc:'Grug aguarda no coração das Colinas. Derrote-o e liberte a região.',
     waves:[ ['grug','batedor'] ],
     tutorial:'boss', clearBonus:80, bg:'assets/bg/salao-goblin.jpg',
-    drops:{ pocao_maior:2, elixir_azul:1 },
+    drops:{ pocao_maior:2, elixir_azul:1, capsula_reset:1 },
   },
 ];
 
@@ -162,7 +268,7 @@ const TUTORIALS = {
     { title:'Batalha de Chefe', text:'Grug é implacável: a cada 3 turnos ele desfere o GRITO DEVASTADOR, um golpe brutal. E abaixo de 40% de vida, entra em FÚRIA, ficando mais forte e rápido. Guarde a Ultimate para esse momento.' },
   ],
   skillup: [
-    { title:'Nova habilidade disponível!', text:'Você subiu de nível e ganhou Pontos de Habilidade. No mapa, abra a ÁRVORE DE HABILIDADES para desbloquear novos golpes da Rosa Azul.' },
+    { title:'Pontos de Atributo!', text:'Você subiu de nível e ganhou 3 Pontos de Atributo. No mapa, abra a ÁRVORE DE HABILIDADES para fortalecer João — atributos da vocação dele custam 1 ponto; os demais custam 2.' },
   ],
 };
 
@@ -171,15 +277,42 @@ const SLOT_KEY = i => `adaptia_slot_${i}`;
 
 function newSave() {
   return {
-    createdAt: Date.now(), hero: null,
-    level: 1, xp: 0, sp: 0,
-    skills: ['chains'], ults: ['garden'], activeUlt: 'garden',
+    v: 2, createdAt: Date.now(), hero: null,
+    level: 1, xp: 0, attrPoints: 0,
+    alloc: { hp:0, atk:0, atkEsp:0, defFis:0, defMag:0, vel:0, let:0 },
+    vocacao: null, caminho: null,
+    loadout: ['chains'], activeUlt: 'garden',
     inventory: { pocao_menor: 1 },
     cleared: [], flags: {},
   };
 }
+
+/* Migra saves do formato antigo (v1: sp/skills/ults) para o v2 (builds) */
+function migrateSave(s) {
+  if (s.v >= 2) return s;
+  const m = newSave();
+  m.createdAt = s.createdAt || Date.now();
+  m.hero = s.hero || null;
+  m.level = Math.min(s.level || 1, MAX_LEVEL);
+  m.xp = s.xp || 0;
+  // pontos antigos de habilidade viram pontos de atributo retroativos
+  m.attrPoints = POINTS_PER_LEVEL * (m.level - 1);
+  // habilidades compradas no sistema antigo já são todas do tronco novo
+  const trunk = ['chains','thorns','petals','prison'];
+  m.loadout = (s.skills || ['chains']).filter(id => trunk.includes(id));
+  if (!m.loadout.length) m.loadout = ['chains'];
+  m.activeUlt = 'garden'; // bloom agora é recompensa da Vocação da Rosa
+  m.inventory = s.inventory || { pocao_menor: 1 };
+  m.cleared = s.cleared || [];
+  m.flags = s.flags || {};
+  return m;
+}
+
 function readSlot(i) {
-  try { const raw = localStorage.getItem(SLOT_KEY(i)); return raw ? JSON.parse(raw) : null; }
+  try {
+    const raw = localStorage.getItem(SLOT_KEY(i));
+    return raw ? migrateSave(JSON.parse(raw)) : null;
+  }
   catch { return null; }
 }
 function persist() {
@@ -322,18 +455,17 @@ function stageUnlocked(idx) {
 }
 function renderMap() {
   const s = G.save;
-  const st = heroStats(s.level);
+  const st = computeStats(s);
   $('#map-hero-level').textContent = s.level;
   const need = xpForNext(s.level);
   $('#map-xp-fill').style.width = (s.level >= MAX_LEVEL ? 100 : clamp(s.xp/need*100, 0, 100)) + '%';
   $('#map-xp-label').textContent = s.level >= MAX_LEVEL ? 'Nível máximo' : `${s.xp} / ${need} XP`;
-  $('#map-hero-stats').innerHTML = `
-    <div><span>VIDA</span><strong>${st.maxHp}</strong></div>
-    <div><span>ATAQUE</span><strong>${st.atk}</strong></div>
-    <div><span>VELOC.</span><strong>${st.spd}</strong></div>`;
+  $('#map-hero-stats').innerHTML = ATTRS.map(a =>
+    `<div><span>${ATTR_INFO[a].label}</span><strong>${st[a]}${a==='let' ? '%' : ''}</strong></div>`
+  ).join('');
   const badge = $('#map-sp-badge');
-  badge.textContent = s.sp;
-  badge.classList.toggle('hidden', s.sp <= 0);
+  badge.textContent = s.attrPoints;
+  badge.classList.toggle('hidden', s.attrPoints <= 0);
 
   const path = $('#stage-path');
   path.innerHTML = '';
@@ -369,56 +501,209 @@ function enterStage(stage) {
   }
 }
 
-/* ═══════════════════ TELA: ÁRVORE ═══════════════════ */
+/* ═══════════════════ TELA: ÁRVORE (builds — ver design/gdd/sistema-de-builds.md) ═══════════════════ */
 function renderTree() {
   const s = G.save;
-  $('#tree-sp').textContent = s.sp;
-  const skDiv = $('#tree-skills');
-  skDiv.innerHTML = '';
-  Object.values(SKILLS).forEach(sk => {
-    const owned = s.skills.includes(sk.id);
-    const canBuy = !owned && s.level >= sk.reqLevel && s.sp >= sk.cost;
-    const node = document.createElement('div');
-    node.className = 'tree-node' + (owned ? ' owned' : '');
-    node.innerHTML = `
-      <h4>${esc(sk.name)}</h4>
-      <span class="tn-meta">${sk.hint} · Recarga ${sk.cd} turnos · Requer nível ${sk.reqLevel}${sk.cost ? ' · Custa ' + sk.cost + ' PH' : ' · Inicial'}</span>
-      <p>${esc(sk.desc)}</p>
-      <div class="tn-row">${owned
-        ? '<span style="color:var(--green);font-family:var(--display);font-size:13px">✓ Dominada</span>'
-        : `<button class="btn-gold small" ${canBuy?'':'disabled'}>Desbloquear (${sk.cost} PH)</button>
-           ${s.level < sk.reqLevel ? '<small style="color:var(--muted)">Nível insuficiente</small>' : ''}`}</div>`;
-    const btn = node.querySelector('button');
-    if (btn) btn.addEventListener('click', () => {
-      s.sp -= sk.cost; s.skills.push(sk.id); persist(); renderTree();
-    });
-    skDiv.appendChild(node);
-  });
+  $('#tree-sp').textContent = s.attrPoints;
+  renderAttrs();
+  renderTrunk();
+  renderVocacao();
+  renderLoadoutPanel();
+  renderRespec();
+}
 
-  const ulDiv = $('#tree-ults');
-  ulDiv.innerHTML = '';
-  Object.values(ULTIMATES).forEach(u => {
-    const owned = s.ults.includes(u.id);
-    const active = s.activeUlt === u.id;
-    const canBuy = !owned && s.level >= u.reqLevel && s.sp >= u.cost;
-    const node = document.createElement('div');
-    node.className = 'tree-node' + (owned ? ' owned' : '') + (active ? ' active-ult' : '');
-    node.innerHTML = `
-      <h4>${esc(u.name)}</h4>
-      <span class="tn-meta">${u.hint}${u.cost ? ' · Requer nível ' + u.reqLevel + ' · Custa ' + u.cost + ' PH' : ' · Inicial'}</span>
-      <p>${esc(u.desc)}</p>
-      <div class="tn-row">${
-        active ? '<span style="color:var(--rose-blue);font-family:var(--display);font-size:13px">◆ Ultimate ativa</span>'
-        : owned ? '<button class="btn-gold small" data-act="equip">Equipar</button>'
-        : `<button class="btn-gold small" ${canBuy?'':'disabled'} data-act="buy">Desbloquear (${u.cost} PH)</button>
-           ${s.level < u.reqLevel ? '<small style="color:var(--muted)">Nível insuficiente</small>' : ''}`}</div>`;
-    const btn = node.querySelector('button');
-    if (btn) btn.addEventListener('click', () => {
-      if (btn.dataset.act === 'buy') { s.sp -= u.cost; s.ults.push(u.id); }
-      s.activeUlt = u.id;
+/* ── painel de atributos ── */
+function renderAttrs() {
+  const s = G.save;
+  const st = computeStats(s);
+  const div = $('#tree-attrs');
+  div.innerHTML = '';
+  ATTRS.forEach(a => {
+    const cost = allocCost(a);
+    const inv = s.alloc[a] || 0;
+    const capped = inv >= ALLOC_CAP;
+    const can = !capped && s.attrPoints >= cost;
+    const row = document.createElement('div');
+    row.className = 'attr-row' + (cost === 1 ? ' affinity' : '');
+    row.innerHTML = `
+      <span class="ar-name">${cost === 1 ? '★ ' : ''}${ATTR_INFO[a].label}</span>
+      <strong class="ar-val">${st[a]}${a==='let' ? '%' : ''}</strong>
+      <small class="ar-inv">${inv}/${ALLOC_CAP}</small>
+      <button class="btn-gold small" ${can ? '' : 'disabled'}>+${ATTR_INFO[a].gain}${a==='let' ? '%' : ''} (${cost} pt)</button>`;
+    row.querySelector('button').addEventListener('click', () => {
+      if (s.attrPoints < cost || (s.alloc[a]||0) >= ALLOC_CAP) return;
+      s.attrPoints -= cost;
+      s.alloc[a] = (s.alloc[a]||0) + 1;
       persist(); renderTree();
     });
-    ulDiv.appendChild(node);
+    div.appendChild(row);
+  });
+  const note = document.createElement('p');
+  note.className = 'attr-note';
+  note.innerHTML = '★ = afinidade de João (custa 1 ponto). Demais atributos custam 2.';
+  div.appendChild(note);
+}
+
+/* ── tronco (desbloqueio automático por nível) ── */
+function renderTrunk() {
+  const s = G.save;
+  const div = $('#tree-skills');
+  div.innerHTML = '';
+  Object.values(SKILLS).filter(sk => !sk.voc).forEach(sk => {
+    const ok = skillUnlocked(s, sk);
+    const node = document.createElement('div');
+    node.className = 'tree-node' + (ok ? ' owned' : '');
+    node.innerHTML = `
+      <h4>${esc(sk.name)}</h4>
+      <span class="tn-meta">${sk.hint} · Recarga ${sk.cd} turnos · Nível ${sk.unlock}</span>
+      <p>${esc(sk.desc)}</p>
+      <div class="tn-row">${ok
+        ? '<span style="color:var(--green);font-family:var(--display);font-size:13px">✓ Dominada</span>'
+        : `<small style="color:var(--muted)">🔒 Desbloqueia no nível ${sk.unlock}</small>`}</div>`;
+    div.appendChild(node);
+  });
+}
+
+/* ── vocação e caminhos ── */
+function renderVocacao() {
+  const s = G.save;
+  const div = $('#tree-vocacao');
+  div.innerHTML = '';
+
+  if (!s.vocacao) {
+    const intro = document.createElement('p');
+    intro.className = 'attr-note';
+    intro.textContent = s.level >= VOC_LEVEL
+      ? 'O momento chegou: escolha o lado da Rosa Azul que João seguirá. A escolha é definitiva (reversível apenas com uma Cápsula de Reset).'
+      : `No nível ${VOC_LEVEL}, João escolherá sua vocação — o lado da Rosa Azul que definirá sua build.`;
+    div.appendChild(intro);
+  }
+
+  Object.values(VOCACOES).forEach(v => {
+    if (s.vocacao && s.vocacao !== v.id) return; // após escolher, só mostra a escolhida
+    const chosen = s.vocacao === v.id;
+    const canPick = !s.vocacao && s.level >= VOC_LEVEL;
+    const card = document.createElement('div');
+    card.className = 'tree-node voc-card' + (chosen ? ' owned' : '');
+    let inner = `
+      <h4>${v.icon} ${esc(v.name)}</h4>
+      <span class="tn-meta">${esc(v.tagline)}</span>
+      <p><strong>Passiva:</strong> ${esc(v.passive)}</p>`;
+    if (chosen) {
+      // habilidades da vocação
+      Object.values(SKILLS).filter(sk => sk.voc === v.id && !sk.caminho).forEach(sk => {
+        const ok = skillUnlocked(s, sk);
+        inner += `<p class="voc-skill">${ok ? '✓' : '🔒'} <strong>${esc(sk.name)}</strong> (nível ${sk.unlock}) — ${sk.hint}</p>`;
+      });
+      // caminhos
+      if (!s.caminho) {
+        inner += s.level >= PATH_LEVEL
+          ? `<p class="attr-note">Escolha um caminho dentro da vocação:</p>`
+          : `<p class="attr-note">No nível ${PATH_LEVEL}, a vocação se aprofunda em um de dois caminhos:</p>`;
+        Object.values(v.caminhos).forEach(c => {
+          inner += `<div class="path-row">
+            <div><strong>${esc(c.name)}</strong><br><small>${esc(c.desc)}</small></div>
+            <button class="btn-gold small" data-path="${c.id}" ${s.level >= PATH_LEVEL ? '' : 'disabled'}>Seguir</button>
+          </div>`;
+        });
+      } else {
+        const c = v.caminhos[s.caminho];
+        inner += `<p class="voc-skill">◆ Caminho: <strong>${esc(c.name)}</strong> — ${esc(c.desc)}</p>`;
+        Object.values(SKILLS).filter(sk => sk.caminho === s.caminho).forEach(sk => {
+          const ok = skillUnlocked(s, sk);
+          inner += `<p class="voc-skill">${ok ? '✓' : '🔒'} <strong>${esc(sk.name)}</strong> (nível ${sk.unlock}) — ${sk.hint}</p>`;
+        });
+      }
+      inner += `<p class="attr-note">${esc(v.apex)}</p>`;
+    } else {
+      inner += `<div class="tn-row">${canPick
+        ? `<button class="btn-gold small" data-voc="${v.id}">Escolher ${esc(v.name)}</button>`
+        : `<small style="color:var(--muted)">🔒 Nível ${VOC_LEVEL} necessário</small>`}</div>`;
+    }
+    card.innerHTML = inner;
+    const vbtn = card.querySelector('button[data-voc]');
+    if (vbtn) vbtn.addEventListener('click', () => {
+      if (!confirm(`Seguir a ${v.name}? A escolha é definitiva (reversível apenas com Cápsula de Reset).`)) return;
+      s.vocacao = v.id; persist(); renderTree();
+    });
+    card.querySelectorAll('button[data-path]').forEach(pbtn => {
+      pbtn.addEventListener('click', () => {
+        const c = v.caminhos[pbtn.dataset.path];
+        if (!confirm(`Seguir o caminho ${c.name}? A escolha é definitiva (reversível apenas com Cápsula de Reset).`)) return;
+        s.caminho = c.id; persist(); renderTree();
+      });
+    });
+    div.appendChild(card);
+  });
+}
+
+/* ── loadout: 5 habilidades + 1 ultimate ── */
+function renderLoadoutPanel() {
+  const s = G.save;
+  const div = $('#tree-loadout');
+  div.innerHTML = '';
+  const equipped = battleLoadout(s);
+
+  const head = document.createElement('p');
+  head.className = 'attr-note';
+  head.innerHTML = `Habilidades equipadas: <strong>${equipped.length}/5</strong> — só as equipadas aparecem em batalha.`;
+  div.appendChild(head);
+
+  ownedSkills(s).forEach(sk => {
+    const on = s.loadout.includes(sk.id);
+    const chip = document.createElement('button');
+    chip.className = 'loadout-chip' + (on ? ' on' : '');
+    chip.innerHTML = `${on ? '◆' : '◇'} ${esc(sk.name)} <small>${sk.hint}</small>`;
+    chip.addEventListener('click', () => {
+      if (on) {
+        if (s.loadout.length <= 1) { alert('Pelo menos 1 habilidade precisa ficar equipada.'); return; }
+        s.loadout = s.loadout.filter(id => id !== sk.id);
+      } else {
+        if (battleLoadout(s).length >= 5) { alert('Máximo de 5 habilidades equipadas. Remova uma antes.'); return; }
+        s.loadout.push(sk.id);
+      }
+      persist(); renderTree();
+    });
+    div.appendChild(chip);
+  });
+
+  // ultimate
+  const ulHead = document.createElement('p');
+  ulHead.className = 'attr-note';
+  ulHead.textContent = 'Ultimate equipada:';
+  div.appendChild(ulHead);
+  Object.values(ULTIMATES).forEach(u => {
+    const available = !u.voc || s.vocacao === u.voc;
+    const active = currentUlt(s).id === u.id;
+    const chip = document.createElement('button');
+    chip.className = 'loadout-chip' + (active ? ' on' : '');
+    chip.disabled = !available;
+    chip.innerHTML = `${active ? '◆' : '◇'} ${esc(u.name)} <small>${available ? u.hint : '🔒 Vocação da Rosa'}</small>`;
+    if (available) chip.addEventListener('click', () => { s.activeUlt = u.id; persist(); renderTree(); });
+    div.appendChild(chip);
+  });
+}
+
+/* ── respec ── */
+function renderRespec() {
+  const s = G.save;
+  const div = $('#tree-respec');
+  const caps = s.inventory.capsula_reset || 0;
+  div.innerHTML = `
+    <p class="attr-note">🔮 Cápsulas de Reset: <strong>${caps}</strong> — redistribui todos os pontos e reabre vocação e caminho.</p>
+    <button class="btn-ghost small" ${caps > 0 ? '' : 'disabled'}>Usar Cápsula de Reset</button>`;
+  div.querySelector('button').addEventListener('click', () => {
+    if (!caps) return;
+    if (!confirm('Usar uma Cápsula de Reset? Todos os pontos de atributo voltam para você e a vocação/caminho serão reabertos.')) return;
+    s.inventory.capsula_reset -= 1;
+    s.attrPoints = POINTS_PER_LEVEL * (s.level - 1);
+    ATTRS.forEach(a => s.alloc[a] = 0);
+    s.vocacao = null; s.caminho = null;
+    s.activeUlt = 'garden';
+    s.loadout = battleLoadout(s);
+    if (!s.loadout.length) s.loadout = ['chains'];
+    persist(); renderTree();
+    alert('A Rosa Azul foi renovada. Redistribua seus pontos!');
   });
 }
 
@@ -452,10 +737,13 @@ function itemIco(it, size) {
 /* ═══════════════════ MOTOR DE BATALHA ═══════════════════ */
 function buildHeroUnit() {
   const s = G.save;
-  const st = heroStats(s.level);
+  const st = computeStats(s);
   return {
     uid:'hero', side:'hero', name:HERO.name, icon:null,
-    hp:st.maxHp, maxHp:st.maxHp, atk:st.atk, spd:st.spd,
+    hp:st.maxHp, maxHp:st.maxHp,
+    atk:st.atk, atkEsp:st.atkEsp, defFis:st.defFis, defMag:st.defMag,
+    spd:st.vel, let:st.let,
+    vocacao:s.vocacao, caminho:s.caminho, level:s.level,
     meter:0, defending:false, alive:true, statuses:[],
     cds:{}, // skillId -> turnos restantes
     bob: Math.random()*10, shakeT:0, flashT:0,
@@ -466,7 +754,10 @@ function buildEnemy(key, idx) {
   return {
     uid:`e-${key}-${idx}-${rand(0,9999)}`, side:'enemy', kind:key,
     name:d.name, icon:d.icon, crown:!!d.crown, size:d.size, boss:!!d.boss,
-    hp:d.hp, maxHp:d.hp, atk:d.atk, spd:d.spd, xp:d.xp, moves:d.moves,
+    hp:d.hp, maxHp:d.hp,
+    atk:d.atk, atkEsp:d.atkEsp, defFis:d.defFis, defMag:d.defMag,
+    spd:d.spd, let:d.let||5,
+    xp:d.xp, moves:d.moves,
     defending:false, alive:true, statuses:[], enraged:false, turnCount:0,
     bob: Math.random()*10, shakeT:0, flashT:0, pose:null, poseUntil:0,
   };
@@ -598,7 +889,7 @@ function tickStartStatuses(u) {
       log(`<strong>${esc(u.name)}</strong> sofre ${d} de veneno. ☠️`);
       if (--st.turns > 0) keep.push(st);
     } else if (st.type === 'regen') {
-      const h = applyHeal(u, st.value);
+      const h = applyHeal(u, st.value, { noSeiva:true });
       log(`<strong>${esc(u.name)}</strong> regenera ${h} de vida. 🌹`);
       if (--st.turns > 0) keep.push(st);
     } else if (st.type === 'stun') {
@@ -619,16 +910,34 @@ function tickEndStatuses(u) {
   u.statuses = keep;
 }
 
-/* ── dano / cura ── */
-function applyDamage(src, tgt, amount, opt = {}) {
+/* ── dano / cura (fórmula: Dano = Poder × (Atq ÷ Def) × variação — sistema-de-builds.md §4) ── */
+function applyDamage(src, tgt, power, opt = {}) {
   if (!tgt || !tgt.alive) return 0;
-  let v = Math.max(1, Math.round(amount + rand(-3, 3)));
-  if (tgt.defending) v = Math.round(v * 0.5);
+  let v, crit = false;
+
+  if (!src) {
+    v = Math.max(1, Math.round(power)); // dano fixo (veneno, efeitos)
+  } else {
+    const type = opt.type || 'mag';
+    const atkVal = type === 'fis' ? src.atk : src.atkEsp;
+    const defVal = Math.max(1, type === 'fis' ? tgt.defFis : tgt.defMag);
+    v = power * (atkVal / defVal) * (0.9 + Math.random() * 0.2);
+    // Passiva Peso das Correntes (Vocação do Ferro): +15% em alvos controlados
+    const controlled = hasStatus(tgt,'slow') || hasStatus(tgt,'stun');
+    if (src.vocacao === 'ferro' && controlled) v *= 1.15;
+    // Guilhotina de Elos: +50% em alvos controlados
+    if (opt.bonusVsControlled && controlled) v *= 1.5;
+    // Crítico via Letalidade
+    if (Math.random() * 100 < (src.let || 0)) { v *= CRIT_MULT; crit = true; }
+    v = Math.max(1, Math.round(v));
+  }
+  if (tgt.defending) v = Math.max(1, Math.round(v * 0.5));
 
   tgt.hp = clamp(tgt.hp - v, 0, tgt.maxHp);
   tgt.shakeT = performance.now() + 320;
   tgt.flashT = performance.now() + 200;
-  popup(tgt, '-' + v, opt.color || '#ff6b74');
+  popup(tgt, (crit ? '✦ -' : '-') + v, crit ? '#ffd24d' : (opt.color || '#ff6b74'));
+  if (crit) log(`💥 <strong>Acerto crítico!</strong>`);
 
   // vítima carrega medidor
   if (tgt.side === 'hero' && !opt.noMeter) gainMeter(tgt, Math.round(v * 0.4));
@@ -641,13 +950,21 @@ function applyDamage(src, tgt, amount, opt = {}) {
   }
   return v;
 }
-function applyHeal(u, amount) {
+function applyHeal(u, amount, opt = {}) {
   if (!u.alive) return 0;
   const prev = u.hp;
   u.hp = clamp(u.hp + Math.round(amount), 0, u.maxHp);
   const h = u.hp - prev;
   if (h > 0) popup(u, '+' + h, '#4fc98a');
+  // Passiva Seiva Vital (Vocação da Rosa): curas aplicam regeneração
+  if (h > 0 && u.vocacao === 'rosa' && !opt.noSeiva) {
+    addStatus(u, { type:'regen', turns:2, value:Math.round(u.maxHp * 0.05) });
+  }
   return h;
+}
+/* Cura com valor fixo escala com Ataque Especial (sistema-de-builds.md §4.2) */
+function healPower(u, poder) {
+  return Math.round(poder * ((u.atkEsp || 100) / 100) * (0.95 + Math.random() * 0.10));
 }
 function gainMeter(u, n) {
   if (u.side !== 'hero') return;
@@ -691,11 +1008,12 @@ function renderMenu(mode, ctx) {
   }
 
   const hero = b.hero;
+  const SELF_SKILLS = ['petals','roseira','chuva']; // habilidades sem alvo inimigo
   if (mode === 'root') {
     prompt.textContent = 'O que João fará?';
     add('⚔ Atacar', 'Dano básico · +20 medidor', null, () => renderMenu('target', {act:'attack'}));
     add('🌹 Habilidades', 'Golpes da Rosa Azul', null, () => renderMenu('skills'));
-    const ult = ULTIMATES[G.save.activeUlt];
+    const ult = currentUlt(G.save);
     const ready = hero.meter >= 100;
     add('💠 ' + ult.name, ready ? 'PRONTA! Medidor 100%' : `Medidor ${hero.meter}%`, ready ? 'ult-ready' : '', () => doUltimate(), !ready);
     add('🛡 Defender', 'Reduz dano 50% · +15 medidor', null, () => doDefend());
@@ -706,11 +1024,13 @@ function renderMenu(mode, ctx) {
 
   if (mode === 'skills') {
     prompt.textContent = 'Escolha uma habilidade';
-    G.save.skills.forEach(id => {
+    const equipped = battleLoadout(G.save);
+    if (!equipped.length) add('Nenhuma habilidade equipada', 'Monte seu loadout na Árvore', null, null, true);
+    equipped.forEach(id => {
       const sk = SKILLS[id];
       const cd = hero.cds[id] || 0;
       add(sk.name, cd > 0 ? `Recarga: ${cd} turno(s)` : sk.hint, null, () => {
-        if (sk.id === 'petals') doSkill(sk, hero);
+        if (SELF_SKILLS.includes(sk.id)) doSkill(sk, hero);
         else renderMenu('target', {act:'skill', skill:sk});
       }, cd > 0);
     });
@@ -720,7 +1040,7 @@ function renderMenu(mode, ctx) {
 
   if (mode === 'items') {
     prompt.textContent = 'Escolha um item';
-    const entries = Object.entries(G.save.inventory).filter(([,n]) => n > 0);
+    const entries = Object.entries(G.save.inventory).filter(([id,n]) => n > 0 && ITEMS[id] && !ITEMS[id].noBattle);
     if (!entries.length) add('Alforje vazio', 'Vença batalhas para coletar itens', null, null, true);
     entries.forEach(([id,n]) => {
       const it = ITEMS[id];
@@ -763,26 +1083,33 @@ function doAttack(target) {
   const h = b.hero;
   setHeroPose('attack', 850);
   reactEnemies(900);
-  const d = applyDamage(h, target, h.atk + 6);
+  const d = applyDamage(h, target, 14, {type:'mag'});
   log(`<strong class="hero">João</strong> golpeia <strong>${esc(target.name)}</strong> com a Rosa Azul: <strong>${d}</strong> de dano.`);
   gainMeter(h, 20);
   endHeroAction();
 }
+
+/* pose visual de cada habilidade (novas reaproveitam sprites existentes) */
+const SKILL_POSE = {
+  chains:'chains', thorns:'thorns', petals:'petals', prison:'prison',
+  gemeas:'chains', tranca:'prison', guilhotina:'prison',
+  roseira:'petals', chuva:'petals', mortifera:'thorns',
+};
 
 function doSkill(sk, target) {
   const b = G.battle;
   if (b.busy) return; b.busy = true;
   const h = b.hero;
   h.cds[sk.id] = sk.cd + 1;
-  setHeroPose(sk.id, 900);
+  setHeroPose(SKILL_POSE[sk.id] || 'attack', 900);
   reactEnemies(900);
 
   if (sk.id === 'chains') {
-    const d = applyDamage(h, target, h.atk + 12);
+    const d = applyDamage(h, target, sk.power, {type:sk.type});
     addStatus(target, {type:'slow', turns:2});
     log(`<strong class="hero">João</strong> lança <strong>Correntes Azuis</strong>: ${d} de dano e <strong>${esc(target.name)}</strong> fica lento. ⛓️`);
   } else if (sk.id === 'thorns') {
-    const d = applyDamage(h, target, h.atk + 6);
+    const d = applyDamage(h, target, sk.power, {type:sk.type});
     addStatus(target, {type:'poison', turns:3, value:12});
     log(`<strong class="hero">João</strong> crava <strong>Espinhos da Rosa</strong>: ${d} de dano e veneno por 3 turnos. 🌹☠️`);
   } else if (sk.id === 'petals') {
@@ -790,9 +1117,41 @@ function doSkill(sk, target) {
     h.defending = true;
     log(`<strong class="hero">João</strong> invoca <strong>Pétalas Vítreas</strong>: recupera ${healed} de vida e assume postura defensiva. 🌹🛡`);
   } else if (sk.id === 'prison') {
-    const d = applyDamage(h, target, h.atk + 16);
+    const d = applyDamage(h, target, sk.power, {type:sk.type});
     addStatus(target, {type:'stun', turns:1});
     log(`<strong class="hero">João</strong> fecha a <strong>Prisão de Ferro</strong>: ${d} de dano e <strong>${esc(target.name)}</strong> é atordoado! ⛓️💫`);
+  } else if (sk.id === 'gemeas') {
+    const others = b.enemies.filter(e => e.alive && e.uid !== target.uid);
+    const second = others.length ? others[rand(0, others.length - 1)] : null;
+    const d1 = applyDamage(h, target, sk.power, {type:sk.type});
+    addStatus(target, {type:'slow', turns:2});
+    let msg = `<strong class="hero">João</strong> dispara <strong>Correntes Gêmeas</strong>: ${d1} de dano em <strong>${esc(target.name)}</strong>`;
+    if (second) {
+      const d2 = applyDamage(h, second, sk.power, {type:sk.type});
+      addStatus(second, {type:'slow', turns:2});
+      msg += ` e ${d2} em <strong>${esc(second.name)}</strong>`;
+    }
+    log(msg + ' — ambos ficam lentos. ⛓️⛓️');
+  } else if (sk.id === 'tranca') {
+    const d = applyDamage(h, target, sk.power, {type:sk.type});
+    addStatus(target, {type:'stun', turns:1});
+    addStatus(target, {type:'slow', turns:2});
+    log(`<strong class="hero">João</strong> sela a <strong>Tranca Absoluta</strong>: ${d} de dano, atordoamento e lentidão! ⛓️🔒`);
+  } else if (sk.id === 'guilhotina') {
+    const d = applyDamage(h, target, sk.power, {type:sk.type, bonusVsControlled:true});
+    log(`<strong class="hero">João</strong> faz cair a <strong>Guilhotina de Elos</strong>: <strong>${d}</strong> de dano! ⛓️⚔️`);
+  } else if (sk.id === 'roseira') {
+    const healed = applyHeal(h, healPower(h, 90));
+    addStatus(h, {type:'regen', turns:3, value:Math.round(h.maxHp * 0.06)});
+    log(`<strong class="hero">João</strong> ergue a <strong>Roseira Guardiã</strong>: recupera ${healed} de vida e regenera por 3 turnos. 🌹✨`);
+  } else if (sk.id === 'chuva') {
+    const healed = applyHeal(h, Math.round(h.maxHp * 0.25));
+    removeStatus(h, 'poison'); removeStatus(h, 'slow');
+    log(`<strong class="hero">João</strong> invoca a <strong>Chuva de Pétalas</strong>: ${healed} de vida e purificação. 🌹🌧️`);
+  } else if (sk.id === 'mortifera') {
+    const d = applyDamage(h, target, sk.power, {type:sk.type});
+    addStatus(target, {type:'poison', turns:3, value:20});
+    log(`<strong class="hero">João</strong> revela a <strong>Rosa Mortífera</strong>: ${d} de dano e veneno devastador. 🌹☠️`);
   }
   gainMeter(h, 15);
   endHeroAction();
@@ -804,23 +1163,27 @@ async function doUltimate() {
   const h = b.hero;
   if (h.meter < 100) { b.busy = false; return; }
   h.meter = 0;
-  const ult = ULTIMATES[G.save.activeUlt];
+  const ult = currentUlt(G.save);
   renderMenu('waiting');
 
   await playUltCutscene(ult);
 
   const foes = b.enemies.filter(e => e.alive);
   if (ult.id === 'garden') {
+    // Forma Final (nível 50, Vocação do Ferro): mais poder e atordoa TODOS
+    const apex = h.level >= APEX_LEVEL && h.vocacao === 'ferro';
     foes.forEach((e, i) => {
-      applyDamage(h, e, h.atk + 18);
-      if (i === 0) addStatus(e, {type:'stun', turns:1});
+      applyDamage(h, e, apex ? 30 : 22, {type:'mag'});
+      if (apex || i === 0) addStatus(e, {type:'stun', turns:1});
     });
-    log(`<strong class="hero">João</strong> desencadeia o <strong>JARDIM DE FERRO</strong>! Correntes irrompem do chão e atingem todos os inimigos. ⛓️🌹`);
+    log(`<strong class="hero">João</strong> desencadeia o <strong>JARDIM DE FERRO${apex ? ': FORMA FINAL' : ''}</strong>! Correntes irrompem do chão e atingem todos os inimigos. ⛓️🌹`);
   } else {
-    foes.forEach(e => applyDamage(h, e, h.atk + 10));
-    applyHeal(h, Math.round(h.maxHp * 0.35));
-    addStatus(h, {type:'regen', turns:3, value:Math.round(h.maxHp * 0.06)});
-    log(`<strong class="hero">João</strong> faz o Jardim <strong>FLORESCER</strong>: dano em área, vida restaurada e pétalas regenerantes. 🌹✨`);
+    // Forma Final (nível 50, Vocação da Rosa): cura 50%
+    const apex = h.level >= APEX_LEVEL && h.vocacao === 'rosa';
+    foes.forEach(e => applyDamage(h, e, 15, {type:'mag'}));
+    applyHeal(h, Math.round(h.maxHp * (apex ? 0.50 : 0.35)));
+    addStatus(h, {type:'regen', turns:apex ? 4 : 3, value:Math.round(h.maxHp * 0.06)});
+    log(`<strong class="hero">João</strong> faz o Jardim <strong>FLORESCER${apex ? ' — FORMA FINAL' : ''}</strong>: dano em área, vida restaurada e pétalas regenerantes. 🌹✨`);
   }
   endHeroAction();
 }
@@ -875,7 +1238,7 @@ async function enemyAct(e) {
   setUnitPose(e, 'attack', 550 + hits * 260 + 680);
   let total = 0;
   for (let i = 0; i < hits; i++) {
-    total += applyDamage(e, h, e.atk * mv.mult);
+    total += applyDamage(e, h, mv.power, {type:mv.type || 'fis'});
     if (hits > 1) await wait(240);
   }
   log(`<strong>${esc(e.name)}</strong> ${mv.label} <strong class="hero">João</strong>: <strong>${total}</strong> de dano.`);
@@ -902,14 +1265,14 @@ async function bossAct(e) {
   const cycle = e.enraged ? 2 : 3;
   if (e.turnCount % cycle === 0) {
     setUnitPose(e, 'attack', 1350);
-    const d = applyDamage(e, h, e.atk * 1.8);
+    const d = applyDamage(e, h, 38, {type:'fis'});
     log(`<strong>${esc(e.name)}</strong> solta o <strong>GRITO DEVASTADOR</strong>: <strong>${d}</strong> de dano brutal! 💥`);
   } else if (e.hp / e.maxHp < 0.7 && Math.random() < 0.25) {
     const heal = applyHeal(e, 40);
     log(`<strong>${esc(e.name)}</strong> devora rações goblins e recupera ${heal} de vida. 🍖`);
   } else {
     setUnitPose(e, 'attack', 1350);
-    const d = applyDamage(e, h, e.atk);
+    const d = applyDamage(e, h, 22, {type:'fis'});
     log(`<strong>${esc(e.name)}</strong> esmaga <strong class="hero">João</strong> com a clava real: <strong>${d}</strong> de dano.`);
   }
   renderHud();
@@ -983,12 +1346,12 @@ function finishBattle(victory) {
     });
   }
 
-  // aplica XP e level ups
+  // aplica XP e level ups (+3 Pontos de Atributo por nível — sistema-de-builds.md §3.2)
   let leveled = 0;
   s.xp += xp;
   while (s.level < MAX_LEVEL && s.xp >= xpForNext(s.level)) {
     s.xp -= xpForNext(s.level);
-    s.level += 1; s.sp += 1; leveled += 1;
+    s.level += 1; s.attrPoints += POINTS_PER_LEVEL; leveled += 1;
   }
   if (s.level >= MAX_LEVEL) s.xp = 0;
   if (firstClear) s.cleared.push(b.stage.id);
@@ -1004,7 +1367,7 @@ function finishBattle(victory) {
   if (leveled > 0) {
     const lv = $('#result-levelup');
     lv.classList.remove('hidden');
-    lv.innerHTML = `⬆ Subiu para o nível <strong>${s.level}</strong>! +${leveled} Ponto(s) de Habilidade`;
+    lv.innerHTML = `⬆ Subiu para o nível <strong>${s.level}</strong>! +${leveled * POINTS_PER_LEVEL} Pontos de Atributo`;
   }
 
   const isBoss = b.stage.boss;
