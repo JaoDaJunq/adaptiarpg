@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="520" viewBox="0 0 960 520">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset=".55" stop-color="#14202e"/>
+      <stop offset="1" stop-color="#1b2a33"/>
+    </linearGradient>
+    <radialGradient id="moon" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#dfeaf2" stop-opacity=".95"/>
+      <stop offset=".55" stop-color="#b9cdd9" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#b9cdd9" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="mist" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8fa8b5" stop-opacity="0"/>
+      <stop offset=".5" stop-color="#8fa8b5" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#8fa8b5" stop-opacity=".05"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="520" fill="url(#sky)"/>
+  <circle cx="760" cy="110" r="150" fill="url(#moon)"/>
+  <circle cx="760" cy="110" r="44" fill="#e6eef4" opacity=".9"/>
+  <!-- árvores camada distante -->
+  <g fill="#152230" opacity=".9">
+    <path d="M60 520 L60 200 L45 210 L62 150 L50 158 L72 100 L82 158 L70 150 L88 210 L74 200 L74 520 Z"/>
+    <path d="M240 520 L240 170 L222 182 L244 110 L230 120 L256 60 L268 120 L254 110 L276 182 L258 170 L258 520 Z"/>
+    <path d="M460 520 L460 220 L446 230 L462 170 L452 178 L472 120 L482 178 L472 170 L490 230 L476 220 L476 520 Z"/>
+    <path d="M650 520 L650 190 L634 200 L654 130 L642 140 L666 80 L678 140 L666 130 L688 200 L670 190 L670 520 Z"/>
+    <path d="M880 520 L880 210 L866 220 L882 160 L872 168 L892 112 L902 168 L892 160 L910 220 L896 210 L896 520 Z"/>
+  </g>
+  <!-- névoa -->
+  <rect y="250" width="960" height="130" fill="url(#mist)"/>
+  <!-- árvores camada próxima -->
+  <g fill="#0c151f">
+    <path d="M140 520 L140 150 L118 165 L146 90 L130 100 L162 30 L178 100 L162 90 L190 165 L164 150 L164 520 Z"/>
+    <path d="M360 520 L360 130 L336 146 L366 66 L350 76 L384 6 L400 76 L384 66 L414 146 L390 130 L390 520 Z"/>
+    <path d="M580 520 L580 160 L558 175 L586 100 L570 110 L602 42 L618 110 L602 100 L630 175 L606 160 L606 520 Z"/>
+    <path d="M800 520 L800 145 L776 160 L806 85 L790 95 L822 26 L838 95 L822 85 L852 160 L826 145 L826 520 Z"/>
+  </g>
+  <!-- lâminas cravadas no chão (memorial dos caídos) -->
+  <g stroke="#6d7f8c" stroke-width="4" opacity=".8">
+    <path d="M290 470 L296 400 M282 416 L310 412" fill="none"/>
+    <path d="M710 480 L704 408 M694 424 L722 420" fill="none"/>
+    <path d="M500 488 L505 430 M494 442 L516 439" fill="none" stroke-width="3"/>
+  </g>
+  <!-- névoa baixa -->
+  <ellipse cx="240" cy="470" rx="300" ry="42" fill="#8fa8b5" opacity=".14"/>
+  <ellipse cx="720" cy="490" rx="340" ry="48" fill="#8fa8b5" opacity=".16"/>
+  <!-- chão -->
+  <path d="M0 480 Q240 456 480 474 Q720 492 960 470 L960 520 L0 520 Z" fill="#0a121b"/>
+</svg>

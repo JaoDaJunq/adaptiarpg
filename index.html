@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Reino de Adaptia — Capítulo I</title>
+  <title>Reino de Adaptia — Crônicas da Ordem</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Alegreya:ital,wght@0,400;0,600;0,800;1,400&display=swap" rel="stylesheet">
@@ -19,11 +19,11 @@
       <div class="title-crest">🌹</div>
       <p class="title-kicker">A Ordem dos Seis</p>
       <h1 class="game-title">Reino de<br><span>Adaptia</span></h1>
-      <p class="title-sub">Capítulo I — As Colinas de Lajeado</p>
+      <p class="title-sub">Crônicas da Ordem — três frentes, três heróis</p>
       <div class="title-actions">
         <button id="btn-title-start" class="btn-royal btn-xl">⚔ Iniciar Jornada</button>
       </div>
-      <p class="title-foot">v1.0 · Protótipo · Capítulo I</p>
+      <p class="title-foot">v2.0 · Crônicas da Ordem · João × Djonga × Luan</p>
     </div>
   </section>
 
@@ -67,52 +67,32 @@
     </div>
   </section>
 
-  <!-- ══════════ MAPA DO CAPÍTULO ══════════ -->
+  <!-- ══════════ MAPA DE ADAPTIA (hub de regiões) ══════════ -->
   <section id="screen-map" class="screen">
     <div class="map-layout">
-      <aside class="map-hero-panel">
-        <div class="mh-top">
-          <img id="map-hero-img" src="assets/joao.png" alt="Herói" />
-          <div>
-            <p class="eyebrow" id="map-hero-title">Rosa Azul / Correntes</p>
-            <h3 id="map-hero-name">João</h3>
-            <p class="mh-level">Nível <strong id="map-hero-level">1</strong></p>
-          </div>
-        </div>
-        <div class="mh-xp">
-          <div class="bar"><div id="map-xp-fill" class="fill xp"></div></div>
-          <small id="map-xp-label">0 / 60 XP</small>
-        </div>
-        <div class="mh-stats" id="map-hero-stats"></div>
-        <div class="mh-actions">
-          <button id="btn-map-tree" class="btn-gold">Árvore de Habilidades <span id="map-sp-badge" class="badge hidden">0</span></button>
-          <button id="btn-map-bag" class="btn-ghost">Inventário</button>
-          <button id="btn-map-slots" class="btn-ghost small">‹ Trocar Registro</button>
-        </div>
-      </aside>
+      <aside class="map-hero-panel" id="party-panel"></aside>
       <main class="map-main">
-        <header class="scr-head left">
-          <p class="eyebrow">Capítulo I</p>
-          <h2>As Colinas de Lajeado</h2>
-          <p class="scr-sub">Avance pelas trilhas infestadas pela vanguarda de Malvorax até o covil do Rei Goblin.</p>
-        </header>
-        <div id="stage-path" class="stage-path"></div>
+        <header class="scr-head left" id="map-head"></header>
+        <div id="stage-path" class="region-grid"></div>
       </main>
     </div>
   </section>
 
-  <!-- ══════════ ÁRVORE DE HABILIDADES ══════════ -->
+  <!-- ══════════ SALÃO DA ORDEM ══════════ -->
   <section id="screen-tree" class="screen">
     <header class="scr-head">
       <button class="btn-back" id="btn-tree-back">‹ Voltar ao Mapa</button>
-      <p class="eyebrow">Grimório de João</p>
-      <h2>Árvore de Habilidades</h2>
+      <p class="eyebrow">Salão da Ordem</p>
+      <h2 id="salao-hero-title">—</h2>
       <p class="scr-sub">Pontos de Atributo disponíveis: <strong id="tree-sp">0</strong></p>
+      <div id="salao-tabs" class="salao-tabs"></div>
     </header>
     <div class="tree-layout">
       <div class="tree-col">
         <h3 class="tree-col-title">Atributos</h3>
         <div id="tree-attrs"></div>
+        <h3 class="tree-col-title">Equipamentos</h3>
+        <div id="tree-equip"></div>
         <h3 class="tree-col-title">Renovação</h3>
         <div id="tree-respec"></div>
       </div>
@@ -200,6 +180,18 @@
   </section>
 
   <!-- ══════════ OVERLAYS ══════════ -->
+  <button id="btn-mute" class="mute-btn" title="Som ligado/desligado">🔊</button>
+
+  <div id="escalacao-overlay" class="overlay hidden">
+    <div class="parchment wide">
+      <p class="parch-kicker">Escalação</p>
+      <h3>Quem vai a campo?</h3>
+      <p class="attr-note">Até 4 heróis lutam por batalha. Os demais ficam na reserva (não ganham XP).</p>
+      <div id="escalacao-list" class="escalacao-list"></div>
+      <button id="btn-escalacao-ok" class="btn-royal">Confirmar Escalação</button>
+    </div>
+  </div>
+
   <div id="tutorial-overlay" class="overlay hidden">
     <div class="parchment">
       <p class="parch-kicker" id="tut-kicker">Tutorial</p>

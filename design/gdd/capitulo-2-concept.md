@@ -205,15 +205,15 @@ Complementa a **tela de escalação** (escolher até 4 heróis antes de cada reg
 
 ## Ordem de Construção Sugerida
 
-1. **Sistema de builds/atributos + árvore bifurcada** — a fundação de tudo (refatorar a árvore do João para o novo modelo)
-2. **Combate em grupo** (até 4 heróis, estender simetria do motor atual)
-3. **Salão da Ordem + escalação**
-4. **Equipamentos v1** (4 slots, só atributos)
-5. **Kits de Djonga e Luan** + suas regiões (hub com 2 regiões iniciais)
-6. **Demais heróis/regiões** em atualizações
+1. ✅ **Sistema de builds/atributos + árvore bifurcada** — ENTREGUE em 15/07/2026
+2. ✅ **Combate em grupo** (até 4 heróis) — ENTREGUE em 19/07/2026
+3. ✅ **Salão da Ordem + escalação** — ENTREGUE em 19/07/2026
+4. ✅ **Equipamentos v1** (4 slots, 16 itens, drops por fase) — ENTREGUE em 19/07/2026
+5. ✅ **Kits de Djonga e Luan + suas regiões** (Cratera Escaldante e Bosque das Lâminas) — ENTREGUE em 19/07/2026
+6. **Demais heróis/regiões** (Thomas, Lorenzo, Ministro) — em atualizações futuras
 7. **Pets v1**
 8. **Modo Versus** (local/simulado primeiro, online depois)
-9. **Polish visual** — contínuo/final, por decisão do João
+9. **Polish visual** — primeira passada entregue em 19/07/2026 (áudio, cenários, transições); contínuo
 
 ---
 
@@ -236,3 +236,13 @@ Complementa a **tela de escalação** (escolher até 4 heróis antes de cada reg
 | 15/07/2026 | Nível máximo: 50 — tronco 1/5/10/15, vocação no 20, caminhos até o 50 |
 | 15/07/2026 | Tronco igual para todos os heróis; níveis pós-20 variam por herói |
 | 15/07/2026 | GDD do sistema de builds criado: [sistema-de-builds.md](sistema-de-builds.md) |
+| 19/07/2026 | Entrega "Crônicas da Ordem": itens 2-5 da fila + polish (autonomia concedida pelo João) |
+| 19/07/2026 | Djonga: sequência de socos implementada (memória de 3; combos EEE/DDD/EDE/DED); vocações Brasa/Geada |
+| 19/07/2026 | Luan: Provocar (taunt) + vocações Fúria/Baluarte com contra-ataques |
+| 19/07/2026 | Recrutamento: Cratera = duelo contra Djonga; Bosque = test drive do Luan como convidado + chefe Cavaleiro Cinzento |
+| 19/07/2026 | Herói recrutado entra no nível médio da equipe com pontos retroativos |
+| 19/07/2026 | João segue como herói inicial da história; escolha livre de inicial adiada (exigiria variantes de história do Cap. I) |
+| 19/07/2026 | Dificuldade: inimigos ×(1 + 0,35 × regiões libertas) |
+| 19/07/2026 | XP integral para todos os escalados; reserva não ganha XP |
+| 19/07/2026 | Áudio: OpenGameArt (CC0/CC-BY, ver CREDITS.md) em vez de itch.io (downloads diretos viáveis); arte nova das regiões: vetorial própria ("silhuetas corrompidas") |
+| 19/07/2026 | Save v3 (roster multi-herói) com migração automática v1→v2→v3 |

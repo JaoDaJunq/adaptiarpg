@@ -255,6 +255,97 @@ button:disabled { opacity: .38; cursor: not-allowed; }
 .sn-body p { margin: 0; color: var(--muted); font-size: 14px; }
 .sn-state { font-family: var(--display); font-size: 13px; color: var(--gold); letter-spacing: .08em; flex: none; }
 
+/* ── transições de tela + botão de som ── */
+.screen.enter { animation: screenIn .35s ease both; }
+@keyframes screenIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.mute-btn {
+  position: fixed; right: 18px; bottom: 18px; z-index: 60;
+  width: 46px; height: 46px; border-radius: 50%; cursor: pointer; font-size: 19px;
+  background: var(--panel); border: 1px solid var(--line-soft); color: #f2ecdd;
+  box-shadow: var(--shadow); transition: border-color .15s, transform .15s;
+}
+.mute-btn:hover { border-color: var(--gold); transform: scale(1.06); }
+
+/* ── painel da Ordem (mapa) ── */
+.pp-title { font-family: var(--display); color: var(--gold); font-size: 17px; letter-spacing: .1em; margin: 0 0 12px; }
+.pp-list { display: grid; gap: 8px; margin-bottom: 14px; }
+.pp-hero {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(0,0,0,.25); border: 1px solid var(--line-soft); border-radius: 12px;
+  padding: 8px 10px;
+}
+.pp-hero.deployed { border-color: rgba(77,141,255,.5); }
+.pp-hero.locked { opacity: .45; filter: grayscale(.8); }
+.pp-hero img { width: 42px; height: 42px; border-radius: 10px; object-fit: cover; object-position: top; flex: none; }
+.pp-hero .pp-info { flex: 1; min-width: 0; }
+.pp-hero strong { display: block; font-family: var(--display); font-size: 14px; }
+.pp-hero small { color: var(--muted); font-size: 11px; }
+.bar.tiny { height: 4px; margin-top: 4px; }
+
+/* ── cartões de região (hub) ── */
+.region-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.region-card {
+  position: relative; cursor: pointer; border-radius: 18px; overflow: hidden;
+  border: 1px solid var(--line-soft); background-size: cover; background-position: center;
+  padding: 18px; min-height: 230px; display: flex; flex-direction: column; justify-content: flex-end;
+  box-shadow: var(--shadow); transition: transform .18s, border-color .18s, box-shadow .18s;
+}
+.region-card:hover { transform: translateY(-4px); border-color: var(--gold); box-shadow: 0 14px 40px rgba(0,0,0,.5); }
+.region-card.done { border-color: rgba(79,201,138,.5); }
+.region-card h3 { margin: 2px 0 6px; font-family: var(--display); font-size: 22px; }
+.region-card .rc-desc { margin: 0 0 12px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.region-card .rc-top { position: absolute; top: 14px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: center; }
+.region-card .rc-icon { font-size: 26px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.6)); }
+.region-card .rc-flag { font-family: var(--display); font-size: 11px; letter-spacing: .1em; color: var(--green); background: rgba(0,0,0,.5); border: 1px solid rgba(79,201,138,.4); border-radius: 999px; padding: 4px 10px; }
+.region-card .rc-foot { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); }
+.region-card .rc-cta { font-family: var(--display); color: var(--gold-bright); letter-spacing: .08em; }
+.region-card .rc-hero { margin-top: 10px; font-size: 12px; color: var(--rose-blue); background: rgba(77,141,255,.1); border: 1px solid rgba(77,141,255,.3); border-radius: 10px; padding: 6px 10px; }
+
+/* ── abas do Salão ── */
+.salao-tabs { display: flex; gap: 10px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+.salao-tab {
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+  background: var(--panel); border: 1px solid var(--line-soft); border-radius: 999px;
+  color: var(--muted); font-family: var(--display); font-size: 14px; letter-spacing: .05em;
+  padding: 6px 16px 6px 6px; transition: border-color .15s, color .15s;
+}
+.salao-tab img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; object-position: top; }
+.salao-tab.on { border-color: var(--gold); color: var(--gold-bright); box-shadow: 0 0 0 1px rgba(216,180,90,.3); }
+.salao-tab:hover { border-color: var(--gold); }
+.salao-tab .badge { position: static; }
+
+/* ── equipamentos ── */
+.equip-slot {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--panel); border: 1px dashed var(--line-soft); border-radius: 12px;
+  padding: 10px 14px; margin-bottom: 8px;
+}
+.equip-slot.filled { border-style: solid; border-color: rgba(216,180,90,.4); }
+.equip-slot .es-label { font-size: 11px; letter-spacing: .08em; color: var(--muted); width: 86px; flex: none; }
+.equip-slot .es-item { flex: 1; font-size: 14px; }
+.equip-slot .es-item small { display: block; color: var(--muted); font-size: 11px; }
+
+/* ── escalação ── */
+.parchment.wide { max-width: 460px; }
+.escalacao-list { display: grid; gap: 8px; margin: 14px 0 18px; }
+.esc-hero {
+  display: flex; align-items: center; gap: 12px; cursor: pointer; text-align: left;
+  background: rgba(0,0,0,.25); border: 1px solid var(--line-soft); border-radius: 12px;
+  color: inherit; font: inherit; padding: 8px 12px; transition: border-color .15s;
+}
+.esc-hero img { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; object-position: top; }
+.esc-hero.on { border-color: var(--rose-blue); box-shadow: 0 0 0 1px var(--rose-glow); }
+.esc-hero strong { display: block; font-family: var(--display); }
+.esc-hero small { color: var(--muted); font-size: 12px; }
+.esc-hero .esc-state { margin-left: auto; font-family: var(--display); font-size: 12px; color: var(--muted); letter-spacing: .06em; }
+.esc-hero.on .esc-state { color: var(--rose-blue); }
+
+/* ── sequência do Djonga ── */
+.seq-tag {
+  display: inline-block; margin-left: 10px; font-size: 13px;
+  background: rgba(0,0,0,.35); border: 1px solid var(--line-soft); border-radius: 999px; padding: 2px 12px;
+}
+
 /* ── árvore ── */
 .tree-layout { display: grid; grid-template-columns: 1fr 1.1fr 1.1fr; gap: 18px; max-width: 1200px; margin: 0 auto; }
 @media (max-width: 1000px) { .tree-layout { grid-template-columns: 1fr; } }
