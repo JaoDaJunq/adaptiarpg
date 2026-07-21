@@ -16,16 +16,20 @@
   --muted: #a9a58f;
   --green: #4fc98a;
   --red: #e0525f;
-  --shadow: 0 22px 70px rgba(0, 0, 0, .55);
-  --display: 'Cinzel', serif;
-  --body: 'Alegreya', Georgia, serif;
+  --shadow: 0 10px 0 rgba(0, 0, 0, .35);
+  --display: 'Pixelify Sans', 'Trebuchet MS', sans-serif;
+  --body: 'VT323', 'Courier New', monospace;
 }
 
 * { box-sizing: border-box; }
+/* estética pixel: cantos duros e renderização nítida em imagens */
+img { image-rendering: pixelated; image-rendering: crisp-edges; }
 html, body { min-height: 100%; }
 body {
   margin: 0;
   font-family: var(--body);
+  font-size: 20px;          /* VT323 é pequeno — sobe a base para legibilidade */
+  line-height: 1.35;
   color: var(--text);
   background:
     radial-gradient(ellipse at 50% -10%, rgba(77, 141, 255, .10), transparent 45%),
@@ -34,6 +38,8 @@ body {
     linear-gradient(180deg, #0b0f1a 0%, #080a12 100%);
   overflow-x: hidden;
 }
+/* títulos pixel: sem itálico, leve espaçamento */
+h1, h2, h3, h4, .eyebrow { font-family: var(--display); font-style: normal !important; letter-spacing: .02em; }
 
 button { font: inherit; cursor: pointer; color: var(--text); border: 0; background: none; }
 button:disabled { opacity: .38; cursor: not-allowed; }
@@ -575,3 +581,90 @@ button:disabled { opacity: .38; cursor: not-allowed; }
   .ult-overlay img { left: -60%; opacity: .5; }
   .ult-shout { right: 5%; left: 5%; text-align: center; max-width: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   PELE PIXEL — override global (full pixel art)
+   ═══════════════════════════════════════════════════════════ */
+/* cantos duros em painéis e controles */
+.slot-card, .tree-node, .region-card, .bag-item, .parchment, .command-panel,
+.battle-side, .map-hero-panel, .cmd-btn, .btn-royal, .btn-gold, .btn-ghost,
+.btn-back, .attr-row, .equip-slot, .loadout-chip, .salao-tab, .stage-node,
+.result-panel, .story-box, .hero-card, .pp-hero, .esc-hero, .turn-pill,
+.badge, .seq-tag, .round-tag, .mute-btn, .path-row, .bar, .fill,
+.mh-stats div, .sn-icon, .slot-num, .cmd-hp, .status-tags span, .st-buff,
+.st-buff, .st-debuff, .wave-banner, .tut-*, #tutorial-overlay .parchment {
+  border-radius: 0 !important;
+}
+/* bordas sólidas nítidas + sombra hard (visual "sticker" pixel) */
+.slot-card, .tree-node, .region-card, .bag-item, .command-panel, .battle-side,
+.map-hero-panel, .result-panel, .story-box, .attr-row, .equip-slot,
+.loadout-chip, .pp-hero, .esc-hero, .parchment {
+  border-width: 3px; border-style: solid;
+  box-shadow: 0 6px 0 rgba(0,0,0,.4) !important;
+}
+/* botões pixel: borda dupla e "afundam" ao clicar */
+.btn-royal, .btn-gold, .btn-ghost {
+  border-width: 3px; border-style: solid; border-radius: 0 !important;
+  box-shadow: 0 4px 0 rgba(0,0,0,.45); transition: transform .05s, box-shadow .05s;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.btn-royal:active:not(:disabled), .btn-gold:active:not(:disabled), .btn-ghost:active:not(:disabled) {
+  transform: translateY(4px); box-shadow: 0 0 0 rgba(0,0,0,.45);
+}
+/* barras de vida/energia em blocos (sem gradiente suave) */
+.bar { border: 2px solid rgba(0,0,0,.5); border-radius: 0 !important; background: rgba(0,0,0,.5); }
+.fill { border-radius: 0 !important; }
+/* títulos grandes: menos peso serifado, mais bloco */
+.game-title { font-family: var(--display); letter-spacing: .01em; }
+.scr-head h2 { font-size: 34px; letter-spacing: .01em; }
+.eyebrow { letter-spacing: .2em; }
+/* texto do corpo um tico maior nos cartões (VT323) */
+.region-card .rc-desc, .scr-sub, .tree-node p, .attr-note, .slot-info small { font-size: 17px; }
+
+/* ═══════════════════ MAPA DE NÓS (node map pixel) ═══════════════════ */
+.node-map { max-width: 760px; margin: 10px auto 0; }
+.nm-track {
+  display: flex; align-items: flex-start; justify-content: center; flex-wrap: wrap;
+  gap: 0; padding: 24px 10px; margin-bottom: 18px;
+  background: rgba(10,14,22,.5); border: 3px solid var(--line);
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,.4), 0 6px 0 rgba(0,0,0,.4);
+}
+.map-node {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: none; border: 0; cursor: pointer; padding: 0; width: 96px; flex: none;
+}
+.mn-dot {
+  width: 62px; height: 62px; display: grid; place-items: center;
+  font-family: var(--display); font-size: 26px; color: var(--gold-bright);
+  background: var(--panel); border: 3px solid var(--gold);
+  box-shadow: 0 5px 0 rgba(0,0,0,.5); transition: transform .08s;
+}
+.mn-dot img { width: 44px; height: 44px; object-fit: contain; }
+.mn-label { font-family: var(--display); font-size: 13px; color: var(--muted); letter-spacing: .04em; text-align: center; }
+.map-node.locked .mn-dot { border-color: var(--line-soft); color: var(--muted); opacity: .55; }
+.map-node.cleared .mn-dot { border-color: var(--green); color: var(--green); }
+.map-node.unlocked .mn-dot { border-color: var(--gold); animation: nodePulse 1.6s ease-in-out infinite; }
+.map-node.sel .mn-dot { transform: translateY(-4px) scale(1.08); box-shadow: 0 9px 0 rgba(0,0,0,.5), 0 0 0 3px var(--rose-glow); }
+.map-node.sel .mn-label { color: var(--gold-bright); }
+.map-node:hover .mn-dot { transform: translateY(-2px); }
+@keyframes nodePulse { 0%,100%{ box-shadow: 0 5px 0 rgba(0,0,0,.5); } 50%{ box-shadow: 0 5px 0 rgba(0,0,0,.5), 0 0 14px rgba(216,180,90,.6); } }
+.mn-link {
+  height: 4px; width: 46px; margin-top: 29px; flex: none;
+  background: repeating-linear-gradient(90deg, var(--line-soft) 0 6px, transparent 6px 12px);
+}
+.mn-link.on { background: repeating-linear-gradient(90deg, var(--green) 0 6px, transparent 6px 12px); }
+/* caixa de informação do nó selecionado */
+.nm-info {
+  max-width: 620px; margin: 0 auto;
+  background: var(--panel); border: 3px solid var(--line);
+  box-shadow: 0 6px 0 rgba(0,0,0,.4); padding: 16px 20px;
+}
+.nmi-head { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+.nmi-icon { font-size: 30px; width: 52px; height: 52px; display: grid; place-items: center; flex: none;
+  background: rgba(0,0,0,.3); border: 2px solid var(--line-soft); }
+.nmi-icon img { width: 42px; height: 42px; object-fit: contain; }
+.nmi-head h3 { margin: 2px 0 0; font-size: 22px; }
+.nmi-desc { color: var(--text); font-size: 17px; margin: 0 0 12px; line-height: 1.4; }
+.nmi-hero { color: var(--rose-blue); font-size: 15px; margin: 0 0 12px; background: rgba(77,141,255,.1); border: 2px solid rgba(77,141,255,.3); padding: 6px 10px; }
+.nmi-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.nmi-foot span { color: var(--muted); font-size: 16px; }

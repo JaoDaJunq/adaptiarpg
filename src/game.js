@@ -977,40 +977,87 @@ function renderPartyPanel() {
   $('#btn-map-slots').addEventListener('click', () => { renderSlots(); show('slots'); });
 }
 
-/* Hub: cartões das regiões */
+/* Constrói um mapa de nós conectados + caixa de info (estilo Pocket Map) */
+function buildNodeMap(container, nodes, infoFor) {
+  container.innerHTML = '';
+  container.className = 'node-map';
+  const track = document.createElement('div');
+  track.className = 'nm-track';
+  const info = document.createElement('div');
+  info.className = 'nm-info';
+  info.id = 'nm-info';
+
+  const select = (i) => {
+    track.querySelectorAll('.map-node').forEach(n => n.classList.remove('sel'));
+    const node = track.querySelector(`.map-node[data-i="${i}"]`);
+    if (node) node.classList.add('sel');
+    info.innerHTML = infoFor(nodes[i], i);
+    const act = info.querySelector('button[data-act]');
+    if (act && nodes[i].onEnter) act.addEventListener('click', nodes[i].onEnter);
+  };
+
+  nodes.forEach((nd, i) => {
+    if (i > 0) {
+      const link = document.createElement('div');
+      link.className = 'mn-link' + (nd.linkOn ? ' on' : '');
+      track.appendChild(link);
+    }
+    const btn = document.createElement('button');
+    btn.className = 'map-node ' + nd.state;
+    btn.dataset.i = i;
+    btn.innerHTML = `<span class="mn-dot">${nd.icon}</span><span class="mn-label">${esc(nd.label)}</span>`;
+    btn.addEventListener('click', () => select(i));
+    track.appendChild(btn);
+  });
+  container.appendChild(track);
+  container.appendChild(info);
+  // seleção inicial: primeiro nó "atual" (desbloqueado não concluído) ou o primeiro
+  let start = nodes.findIndex(n => n.state === 'unlocked');
+  if (start < 0) start = 0;
+  select(start);
+}
+
+/* Hub: regiões como nós do mapa-múndi */
 function renderMap() {
   G.region = null;
   renderPartyPanel();
   const s = G.save;
   $('#map-head').innerHTML = `
-    <p class="eyebrow">Mapa de Adaptia</p>
+    <p class="eyebrow">◈ Mapa de Adaptia ◈</p>
     <h2>Frentes de Batalha</h2>
-    <p class="scr-sub">A vanguarda de Malvorax avança em várias frentes. Escolha onde a Ordem atacará — em cada região, um herói espera por você.</p>`;
-  const grid = $('#stage-path');
-  grid.innerHTML = '';
-  grid.className = 'region-grid';
-  Object.values(REGIONS).forEach(region => {
+    <p class="scr-sub">A vanguarda de Malvorax avança em várias frentes. Escolha onde a Ordem atacará.</p>`;
+  const el = $('#stage-path');
+  const regions = Object.values(REGIONS);
+  const nodes = regions.map((region, idx) => {
     const done = regionCleared(s, region.id);
+    const started = region.stages.some(st => s.cleared.includes(st.id));
+    return {
+      region,
+      label: region.name,
+      icon: done ? '✓' : region.icon,
+      state: done ? 'cleared' : 'unlocked',
+      linkOn: idx === 0 ? false : (regionCleared(s, regions[idx-1].id)),
+      onEnter: () => enterRegion(region),
+    };
+  });
+  buildNodeMap(el, nodes, (nd) => {
+    const region = nd.region;
     const clearedCount = region.stages.filter(st => s.cleared.includes(st.id)).length;
-    const card = document.createElement('div');
-    card.className = 'region-card' + (done ? ' done' : '');
-    card.style.backgroundImage = `linear-gradient(180deg, rgba(8,11,20,.25), rgba(8,11,20,.92)), url(${region.bgCard})`;
-    card.innerHTML = `
-      <div class="rc-top"><span class="rc-icon">${region.icon}</span>${done ? '<span class="rc-flag">✓ LIBERTA</span>' : ''}</div>
-      <p class="eyebrow">${esc(region.chapter)}</p>
-      <h3>${esc(region.name)}</h3>
-      <p class="rc-desc">${esc(region.desc)}</p>
-      <div class="rc-foot">
+    const done = regionCleared(s, region.id);
+    const reward = region.heroReward && !s.roster[region.heroReward]
+      ? `<p class="nmi-hero">★ Recompensa: <strong>${esc(HEROES[region.heroReward].name)}</strong> se junta à Ordem</p>` : '';
+    return `
+      <div class="nmi-head"><span class="nmi-icon">${region.icon}</span>
+        <div><p class="eyebrow">${esc(region.chapter)}</p><h3>${esc(region.name)}</h3></div></div>
+      <p class="nmi-desc">${esc(region.desc)}</p>
+      ${reward}
+      <div class="nmi-foot">
         <span>${clearedCount}/${region.stages.length} fases</span>
-        <span class="rc-cta">${done ? 'Rejogar ›' : 'Entrar ›'}</span>
-      </div>
-      ${region.heroReward && !s.roster[region.heroReward] ? `<div class="rc-hero">Recompensa: <strong>${esc(HEROES[region.heroReward].name)}</strong> se junta à Ordem</div>` : ''}`;
-    card.addEventListener('click', () => enterRegion(region));
-    grid.appendChild(card);
+        <button class="btn-royal small" data-act>${done ? 'Rejogar ›' : 'Entrar ›'}</button>
+      </div>`;
   });
 }
 
-/* Dentro de uma região: trilha de fases */
 function enterRegion(region) {
   const s = G.save;
   const introFlag = 'intro_' + region.id;
@@ -1022,6 +1069,7 @@ function enterRegion(region) {
   }
 }
 
+/* Região: fases como trilha de nós conectados */
 function renderRegion(region) {
   G.region = region;
   renderPartyPanel();
@@ -1030,32 +1078,38 @@ function renderRegion(region) {
   $('#map-head').innerHTML = `
     <button class="btn-back" id="btn-region-back">‹ Mapa de Adaptia</button>
     <p class="eyebrow">${esc(region.chapter)}</p>
-    <h2>${region.icon} ${esc(region.name)}</h2>
-    <p class="scr-sub">${esc(region.desc)}</p>`;
+    <h2>${region.icon} ${esc(region.name)}</h2>`;
   $('#btn-region-back').addEventListener('click', renderMap);
-  const path = $('#stage-path');
-  path.innerHTML = '';
-  path.className = 'stage-path';
-  region.stages.forEach((stage, idx) => {
-    if (idx > 0) {
-      const conn = document.createElement('div');
-      conn.className = 'stage-connector';
-      path.appendChild(conn);
-    }
+  const el = $('#stage-path');
+  const nodes = region.stages.map((stage, idx) => {
     const unlocked = stageUnlockedIn(region, idx);
     const cleared = s.cleared.includes(stage.id);
-    const node = document.createElement('div');
-    node.className = 'stage-node ' + (stage.boss?'boss ':'') + (unlocked ? 'unlocked' : 'locked') + (cleared ? ' cleared' : '');
-    node.innerHTML = `
-      <div class="sn-icon">${stage.iconImg ? `<img src="${stage.iconImg}" alt="">` : stage.icon}</div>
-      <div class="sn-body">
-        <p class="eyebrow">Fase ${stage.id}${stage.boss ? ' · CHEFE' : ''}${stage.guest ? ' · ALIADO CONVIDADO' : ''}${stage.waves.length>1 ? ' · '+stage.waves.length+' ondas' : ''}</p>
-        <h3>${esc(stage.name)}</h3>
-        <p>${esc(stage.desc)}</p>
-      </div>
-      <div class="sn-state">${cleared ? '✓ Concluída' : unlocked ? 'Entrar ›' : '🔒'}</div>`;
-    if (unlocked) node.addEventListener('click', () => enterStage(stage));
-    path.appendChild(node);
+    const icon = cleared ? '✓' : stage.boss ? '☠' : stage.guest ? '★' : (unlocked ? (idx+1) : '🔒');
+    return {
+      stage, idx,
+      label: 'Fase ' + stage.id,
+      icon,
+      state: cleared ? 'cleared' : unlocked ? 'unlocked' : 'locked',
+      linkOn: idx === 0 ? false : s.cleared.includes(region.stages[idx-1].id),
+      onEnter: unlocked ? () => enterStage(stage) : null,
+    };
+  });
+  buildNodeMap(el, nodes, (nd) => {
+    const stage = nd.stage;
+    const unlocked = nd.state !== 'locked';
+    const cleared = nd.state === 'cleared';
+    const tags = [];
+    if (stage.boss) tags.push('CHEFE');
+    if (stage.guest) tags.push('ALIADO CONVIDADO');
+    if (stage.waves.length > 1) tags.push(stage.waves.length + ' ONDAS');
+    return `
+      <div class="nmi-head"><span class="nmi-icon">${stage.iconImg ? `<img src="${stage.iconImg}" alt="">` : stage.icon}</span>
+        <div><p class="eyebrow">Fase ${stage.id}${tags.length ? ' · ' + tags.join(' · ') : ''}</p><h3>${esc(stage.name)}</h3></div></div>
+      <p class="nmi-desc">${esc(stage.desc)}</p>
+      <div class="nmi-foot">
+        <span>${cleared ? '✓ Concluída' : unlocked ? 'Disponível' : '🔒 Bloqueada'}</span>
+        ${unlocked ? `<button class="btn-royal small" data-act>${cleared ? 'Rejogar ›' : 'Entrar ›'}</button>` : ''}
+      </div>`;
   });
 }
 
