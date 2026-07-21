@@ -401,6 +401,7 @@ button:disabled { opacity: .38; cursor: not-allowed; }
 .bag-item .bi-icon { font-size: 30px; width: 44px; height: 44px; display: grid; place-items: center; flex: none; }
 .bag-item .bi-icon .item-ico { object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,.4)); }
 .result-rows .item-ico { vertical-align: middle; object-fit: contain; }
+.ico-pix { image-rendering: pixelated; image-rendering: crisp-edges; }
 .bag-item strong { display: block; font-family: var(--display); }
 .bag-item small { color: var(--muted); }
 .bag-item .bi-count { margin-left: auto; font-family: var(--display); font-size: 22px; color: var(--gold-bright); }

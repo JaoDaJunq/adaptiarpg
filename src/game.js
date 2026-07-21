@@ -451,6 +451,8 @@ const EQUIPMENT = {
   amuleto_ordem:    { id:'amuleto_ordem',    slot:'acc',  icon:'🔶', name:'Amuleto da Ordem',     stats:{hp:25, defMag:3},    desc:'+25 Vida, +3 Def. Mágica' },
   bracelete_pedra:  { id:'bracelete_pedra',  slot:'acc',  icon:'🪨', name:'Bracelete de Pedra',   stats:{defFis:3, hp:20},    desc:'+3 Def. Física, +20 Vida' },
 };
+// ícones pixel (Shikashi Fantasy Icons — ver CREDITS.md); ç normalizado no nome do arquivo
+Object.values(EQUIPMENT).forEach(it => { it.img = `assets/icons/equip_${it.id.replace('ç','c')}.png`; });
 
 /* ═══════════════════ DADOS: ITENS ═══════════════════ */
 const ITEMS = {
@@ -458,7 +460,7 @@ const ITEMS = {
   pocao_maior:  { id:'pocao_maior',  icon:'⚗️', img:'assets/items/pocao-maior.png', name:'Poção Maior',       desc:'Restaura 150 de vida.' },
   elixir_azul:  { id:'elixir_azul',  icon:'💠', img:'assets/items/elixir-azul.png', name:'Elixir Azul',       desc:'Carrega 50% do medidor de Ultimate.' },
   tonico:       { id:'tonico',       icon:'🌿', img:'assets/items/tonico.png',      name:'Tônico Purificante', desc:'Remove veneno e lentidão e cura 40 de vida.' },
-  capsula_reset:{ id:'capsula_reset', icon:'🔮', name:'Cápsula de Reset', noBattle:true, desc:'Redistribui todos os pontos de atributo e reabre a escolha de vocação. Use na Árvore de Habilidades.' },
+  capsula_reset:{ id:'capsula_reset', icon:'🔮', img:'assets/icons/equip_capsula_reset.png', name:'Cápsula de Reset', noBattle:true, desc:'Redistribui todos os pontos de atributo e reabre a escolha de vocação. Use na Árvore de Habilidades.' },
 };
 
 /* ═══════════════════ DADOS: INIMIGOS ═══════════════════ */
@@ -491,6 +493,8 @@ const ENEMIES = {
   escudeiro: { id:'escudeiro', name:'Escudeiro Caído',   icon:'⚔️', size:86,  hp:150, atk:20, atkEsp:10, defFis:24, defMag:14, spd:48, let:5,  xp:50,
                moves:[{k:'charge', chance:.3, power:25, type:'fis', label:'investe de escudo contra'}, {k:'sword', chance:1, power:16, type:'fis', label:'golpeia'}] },
   cavaleiro: { id:'cavaleiro', name:'Cavaleiro Cinzento', icon:'🛡', size:140, hp:560, atk:28, atkEsp:18, defFis:26, defMag:18, spd:52, let:10, xp:280, boss:true },
+  cogumelo:  { id:'cogumelo',  name:'Cogumelo Corrompido', icon:'🍄', size:60,  hp:70,  atk:14, atkEsp:14, defFis:12, defMag:14, spd:44, let:5,  xp:30,
+               moves:[{k:'spore', chance:.35, power:14, type:'mag', label:'lança esporos tóxicos em'}, {k:'headbutt', chance:1, power:13, type:'fis', label:'dá uma cabeçada em'}] },
 };
 
 /* Dificuldade escala por progresso: inimigos ficam mais fortes a cada região liberada */
@@ -581,8 +585,8 @@ const REGIONS = {
     stages: [
       {
         id:'B-1', name:'Orla Nevoenta', icon:'🐺',
-        desc:'Lobos da névoa caçam em bando na entrada do bosque.',
-        waves:[ ['lobo','lobo'] ],
+        desc:'Lobos da névoa e cogumelos corrompidos rondam a entrada do bosque.',
+        waves:[ ['lobo','cogumelo'] ],
         tutorial:'party', clearBonus:45, bg:'assets/bg/bosque.svg',
         drops:{ pocao_menor:2 }, dropsEquip:{ anel_presteza:1 },
       },
@@ -1323,7 +1327,7 @@ function renderEquipPanel(heroId, hs) {
     row.className = 'equip-slot' + (it ? ' filled' : '');
     row.innerHTML = `
       <span class="es-label">${label}</span>
-      <span class="es-item">${it ? `${it.icon} ${esc(it.name)} <small>${esc(it.desc)}</small>` : '<small>— vazio —</small>'}</span>
+      <span class="es-item">${it ? `${equipIco(it, 26)} ${esc(it.name)} <small>${esc(it.desc)}</small>` : '<small>— vazio —</small>'}</span>
       ${it ? '<button class="btn-ghost small">Remover</button>' : ''}`;
     const btn = row.querySelector('button');
     if (btn) btn.addEventListener('click', () => { hs.equip[slot] = null; persist(); renderSalao(); });
@@ -1340,7 +1344,7 @@ function renderEquipPanel(heroId, hs) {
     const it = EQUIPMENT[id];
     const chip = document.createElement('button');
     chip.className = 'loadout-chip';
-    chip.innerHTML = `${it.icon} ${esc(it.name)} <small>${esc(it.desc)} · ${it.slot === 'acc' ? 'Acessório' : EQUIP_SLOTS[it.slot]}</small>`;
+    chip.innerHTML = `${equipIco(it, 24)} ${esc(it.name)} <small>${esc(it.desc)} · ${it.slot === 'acc' ? 'Acessório' : EQUIP_SLOTS[it.slot]}</small>`;
     chip.addEventListener('click', () => {
       let slot = it.slot;
       if (slot === 'acc') slot = !hs.equip.acc1 ? 'acc1' : (!hs.equip.acc2 ? 'acc2' : 'acc1');
@@ -1406,7 +1410,7 @@ function renderBag() {
       const usados = equippedByRoster(G.save, id);
       const row = document.createElement('div');
       row.className = 'bag-item';
-      row.innerHTML = `<div class="bi-icon"><span style="font-size:30px">${it.icon}</span></div>
+      row.innerHTML = `<div class="bi-icon">${equipIco(it, 40)}</div>
         <div><strong>${esc(it.name)}</strong><small>${esc(it.desc)}${usados ? ` · ${usados} em uso` : ''}</small></div>
         <div class="bi-count">×${n}</div>`;
       list.appendChild(row);
@@ -1416,7 +1420,12 @@ function renderBag() {
 
 function itemIco(it, size) {
   return it.img
-    ? `<img class="item-ico" src="${it.img}" alt="" style="width:${size}px;height:${size}px">`
+    ? `<img class="item-ico ico-pix" src="${it.img}" alt="" style="width:${size}px;height:${size}px">`
+    : `<span style="font-size:${Math.round(size*0.7)}px">${it.icon}</span>`;
+}
+function equipIco(it, size) {
+  return it.img
+    ? `<img class="item-ico ico-pix" src="${it.img}" alt="" style="width:${size}px;height:${size}px;vertical-align:middle">`
     : `<span style="font-size:${Math.round(size*0.7)}px">${it.icon}</span>`;
 }
 
@@ -2280,7 +2289,7 @@ function finishBattle(victory) {
   if (firstClear && b.stage.dropsEquip) {
     Object.entries(b.stage.dropsEquip).forEach(([id,n]) => {
       s.equipOwned[id] = (s.equipOwned[id]||0) + n;
-      rows.push([EQUIPMENT[id].icon + ' ' + EQUIPMENT[id].name, 'equip.']);
+      rows.push([equipIco(EQUIPMENT[id], 22) + ' ' + EQUIPMENT[id].name, 'equip.']);
       droppedEquip = true;
     });
   }
@@ -2459,12 +2468,12 @@ function loadSprites() {
   };
   CANVAS.bgs = {};
   ALL_STAGES.forEach(st => { if (st.bg && !CANVAS.bgs[st.bg]) CANVAS.bgs[st.bg] = loadImg(st.bg); });
-  // sprites de inimigos novos (silhuetas corrompidas em SVG)
-  ['capanga','fundidor','brigao','lobo','espectro','escudeiro','cavaleiro'].forEach(k => {
-    CANVAS.enemies[k] = loadImg(`assets/enemies/${k}.svg`);
-  });
+  // sprites de inimigos das regiões novas (pixel art — 32rogues, ver CREDITS.md)
+  PIXEL_ENEMIES.forEach(k => { CANVAS.enemies[k] = loadImg(`assets/enemies/${k}.png`); });
   CANVAS.enemies.djonga_boss = loadImg('assets/djonga.png'); // o duelo é contra o próprio Djonga
 }
+/* inimigos em pixel art (renderizados nítidos, sem suavização) */
+const PIXEL_ENEMIES = ['capanga','fundidor','brigao','lobo','espectro','escudeiro','cavaleiro','cogumelo'];
 function setHeroPose(name, ms) {
   const b = G.battle;
   if (!b || !b.active || b.active.side !== 'hero') return;
@@ -2645,13 +2654,24 @@ function drawEnemy(ctx, u, pos, now) {
   }
   let topY = y - u.size * 2;
   if (img && img.complete && img.naturalWidth) {
+    const pixel = PIXEL_ENEMIES.includes(u.kind);
     const ratio = img.naturalWidth / img.naturalHeight;
-    let dh = u.size * 2.35, dw = dh * ratio;
-    const maxW = u.boss ? 300 : 210;
-    if (dw > maxW) { dw = maxW; dh = dw / ratio; }
+    let dh, dw;
+    if (pixel) {
+      // pixel art: altura-alvo proporcional ao tamanho, renderização nítida
+      const targetH = u.size * (u.boss ? 1.7 : 1.5);
+      const scale = targetH / img.naturalHeight;
+      dw = img.naturalWidth * scale; dh = targetH;
+      ctx.imageSmoothingEnabled = false;
+    } else {
+      dh = u.size * 2.35; dw = dh * ratio;
+      const maxW = u.boss ? 300 : 210;
+      if (dw > maxW) { dw = maxW; dh = dw / ratio; }
+    }
     if (u.flashT && now < u.flashT) ctx.filter = 'brightness(2.3) saturate(.6)';
     ctx.drawImage(img, x - dw / 2, y - dh, dw, dh);
     ctx.filter = 'none';
+    ctx.imageSmoothingEnabled = true;
     topY = y - dh;
   } else {
     ctx.font = `${u.size}px serif`; ctx.textAlign = 'center';
