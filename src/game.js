@@ -1165,11 +1165,15 @@ function salaoHero() {
   return G.heroSel;
 }
 
+const SALAO_SUBTABS = [['status','⚔ Status'], ['skills','✦ Habilidades'], ['inv','🎒 Inventário']];
+
 function renderSalao() {
   const s = G.save;
   const heroId = salaoHero();
   const hs = s.roster[heroId];
-  // abas de heróis
+  if (!G.salaoTab) G.salaoTab = 'status';
+
+  // abas de heróis (selecionar o herói)
   const tabs = $('#salao-tabs');
   tabs.innerHTML = '';
   Object.keys(s.roster).forEach(id => {
@@ -1181,13 +1185,91 @@ function renderSalao() {
     tabs.appendChild(b);
   });
   $('#salao-hero-title').textContent = HEROES[heroId].name + ' — ' + HEROES[heroId].title;
-  $('#tree-sp').textContent = hs.attrPoints;
-  renderAttrs(heroId, hs);
-  renderTrunk(heroId, hs);
-  renderVocacao(heroId, hs);
-  renderLoadoutPanel(heroId, hs);
-  renderEquipPanel(heroId, hs);
-  renderRespec(heroId, hs);
+
+  // sub-abas (Status / Habilidades / Inventário)
+  const sub = $('#salao-subtabs');
+  sub.innerHTML = '';
+  SALAO_SUBTABS.forEach(([k, label]) => {
+    const b = document.createElement('button');
+    b.className = 'salao-subtab' + (G.salaoTab === k ? ' on' : '');
+    let badge = '';
+    if (k === 'status' && hs.attrPoints > 0) badge = `<em class="badge">${hs.attrPoints}</em>`;
+    b.innerHTML = label + badge;
+    b.addEventListener('click', () => { G.salaoTab = k; renderSalao(); });
+    sub.appendChild(b);
+  });
+
+  const c = $('#salao-content');
+  if (G.salaoTab === 'status') {
+    c.innerHTML = `
+      <div class="salao-grid two">
+        <div class="salao-col">
+          <div class="salao-panel-head"><h3 class="tree-col-title">Atributos</h3>
+            <span class="salao-points">Pontos: <strong id="tree-sp">0</strong></span></div>
+          <div id="tree-attrs"></div>
+        </div>
+        <div class="salao-col">
+          <h3 class="tree-col-title">Vocação Atual</h3>
+          <div id="tree-voc-summary"></div>
+          <h3 class="tree-col-title">Renovação</h3>
+          <div id="tree-respec"></div>
+        </div>
+      </div>`;
+    $('#tree-sp').textContent = hs.attrPoints;
+    renderAttrs(heroId, hs);
+    renderVocSummary(heroId, hs);
+    renderRespec(heroId, hs);
+  } else if (G.salaoTab === 'skills') {
+    c.innerHTML = `
+      <div class="salao-grid three">
+        <div class="salao-col"><h3 class="tree-col-title">Tronco — Básicas</h3><div id="tree-skills"></div></div>
+        <div class="salao-col"><h3 class="tree-col-title">Vocação</h3><div id="tree-vocacao"></div></div>
+        <div class="salao-col"><h3 class="tree-col-title">Loadout de Batalha</h3><div id="tree-loadout"></div></div>
+      </div>`;
+    renderTrunk(heroId, hs);
+    renderVocacao(heroId, hs);
+    renderLoadoutPanel(heroId, hs);
+  } else { // inv
+    c.innerHTML = `
+      <div class="salao-grid two">
+        <div class="salao-col"><h3 class="tree-col-title">Equipamentos de ${esc(HEROES[heroId].name)}</h3><div id="tree-equip"></div></div>
+        <div class="salao-col"><h3 class="tree-col-title">Alforje da Ordem</h3><div id="tree-consum"></div></div>
+      </div>`;
+    renderEquipPanel(heroId, hs);
+    renderConsumables();
+  }
+}
+
+/* resumo da vocação (aba Status) */
+function renderVocSummary(heroId, hs) {
+  const div = $('#tree-voc-summary');
+  if (!hs.vocacao) {
+    div.innerHTML = `<p class="attr-note">Vocação ainda não escolhida (nível ${VOC_LEVEL}). Defina na aba ✦ Habilidades.</p>`;
+    return;
+  }
+  const v = VOCACOES[heroId][hs.vocacao];
+  const cam = hs.caminho ? v.caminhos[hs.caminho] : null;
+  div.innerHTML = `
+    <div class="tree-node owned">
+      <h4>${v.icon} ${esc(v.name)}</h4>
+      <p><strong>Passiva:</strong> ${esc(v.passive)}</p>
+      ${cam ? `<p class="voc-skill">◆ Caminho: <strong>${esc(cam.name)}</strong></p>` : `<p class="attr-note">Caminho no nível ${PATH_LEVEL}.</p>`}
+    </div>`;
+}
+
+/* alforje (consumíveis) na aba Inventário do Salão */
+function renderConsumables() {
+  const div = $('#tree-consum');
+  const entries = Object.entries(G.save.inventory).filter(([id, n]) => n > 0 && ITEMS[id]);
+  if (!entries.length) { div.innerHTML = '<p class="attr-note">Alforje vazio. Vença batalhas para coletar itens.</p>'; return; }
+  div.innerHTML = '';
+  entries.forEach(([id, n]) => {
+    const it = ITEMS[id];
+    const row = document.createElement('div');
+    row.className = 'equip-slot filled';
+    row.innerHTML = `<span class="es-item">${itemIco(it, 26)} ${esc(it.name)} <small>${esc(it.desc)}</small></span><span class="es-count">×${n}</span>`;
+    div.appendChild(row);
+  });
 }
 
 /* ── painel de atributos ── */
@@ -2528,6 +2610,8 @@ function loadSprites() {
 }
 /* inimigos em pixel art (renderizados nítidos, sem suavização) */
 const PIXEL_ENEMIES = ['capanga','fundidor','brigao','lobo','espectro','escudeiro','cavaleiro','cogumelo'];
+/* heróis com sprite de batalha em pixel (João segue ilustrado por ora) */
+const PIXEL_HEROES = ['djonga','luan'];
 function setHeroPose(name, ms) {
   const b = G.battle;
   if (!b || !b.active || b.active.side !== 'hero') return;
@@ -2619,6 +2703,7 @@ function unitShake(u, now) {
 
 function drawHero(ctx, u, pos, now) {
   let img = CANVAS.heroSprites[u.heroId];
+  let usingSprite = !!(img && img.complete && img.naturalWidth);
   // poses só existem para João por enquanto
   if (u.heroId === 'joao' && u.pose && now < u.poseUntil) {
     const p = CANVAS.heroPoses[u.pose];
@@ -2627,8 +2712,10 @@ function drawHero(ctx, u, pos, now) {
   // fallback: retrato do herói se o sprite de batalha não existir
   if (!img || !img.complete || !img.naturalWidth) {
     const alt = CANVAS.heroPortraits[u.heroId];
-    if (alt && alt.complete && alt.naturalWidth) img = alt;
+    if (alt && alt.complete && alt.naturalWidth) { img = alt; usingSprite = false; }
   }
+  // Djonga/Luan têm sprite pixel → render nítido (João é ilustrado → suave)
+  const pixelHero = PIXEL_HEROES.includes(u.heroId) && usingSprite;
   const bob = Math.sin(now / 600 + u.bob) * 4;
   const sx = unitShake(u, now);
   const x = pos.x + sx, y = pos.y + bob;
@@ -2648,11 +2735,13 @@ function drawHero(ctx, u, pos, now) {
   let topY = pos.y - 230;
   if (img && img.complete && img.naturalWidth) {
     const ratio = img.naturalWidth / img.naturalHeight;
-    let dh = 232, dw = dh * ratio;
+    let dh = pixelHero ? 210 : 232, dw = dh * ratio;
     if (dw > 200) { dw = 200; dh = dw / ratio; }
     if (u.flashT && now < u.flashT) ctx.filter = 'brightness(2.2)';
     if (!u.alive) ctx.filter = 'grayscale(1) brightness(.6)';
+    if (pixelHero) ctx.imageSmoothingEnabled = false;
     ctx.drawImage(img, x - dw / 2, y - dh, dw, dh);
+    ctx.imageSmoothingEnabled = true;
     ctx.filter = 'none';
     topY = y - dh;
   } else {

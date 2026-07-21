@@ -668,3 +668,24 @@ button:disabled { opacity: .38; cursor: not-allowed; }
 .nmi-hero { color: var(--rose-blue); font-size: 15px; margin: 0 0 12px; background: rgba(77,141,255,.1); border: 2px solid rgba(77,141,255,.3); padding: 6px 10px; }
 .nmi-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .nmi-foot span { color: var(--muted); font-size: 16px; }
+
+/* ═══════════════════ SALÃO — sub-abas (Status / Habilidades / Inventário) ═══════════════════ */
+.salao-subtabs { display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+.salao-subtab {
+  font-family: var(--display); font-size: 16px; letter-spacing: .04em;
+  color: var(--muted); background: var(--panel);
+  border: 3px solid var(--line-soft); border-radius: 0;
+  padding: 8px 20px; box-shadow: 0 4px 0 rgba(0,0,0,.4); cursor: pointer;
+  transition: transform .05s, color .12s, border-color .12s;
+}
+.salao-subtab:hover { color: var(--gold-bright); border-color: var(--gold); }
+.salao-subtab.on { color: var(--ink); background: var(--gold); border-color: var(--gold-bright); color: #1a1206; }
+.salao-subtab .badge { position: static; }
+.salao-grid { display: grid; gap: 18px; max-width: 1120px; margin: 0 auto; }
+.salao-grid.two { grid-template-columns: 1.1fr 1fr; }
+.salao-grid.three { grid-template-columns: 1.1fr 1.1fr 1.1fr; }
+@media (max-width: 900px) { .salao-grid.two, .salao-grid.three { grid-template-columns: 1fr; } }
+.salao-panel-head { display: flex; justify-content: space-between; align-items: baseline; }
+.salao-points { color: var(--muted); font-size: 16px; }
+.salao-points strong { color: var(--gold-bright); }
+.es-count { margin-left: auto; font-family: var(--display); color: var(--gold-bright); font-size: 18px; }
